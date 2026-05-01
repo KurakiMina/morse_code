@@ -32,7 +32,17 @@ const MORSE_TABLE = {
   ".--": "W",
   "-..-": "X",
   "-.--": "Y",
-  "--..": "Z"
+  "--..": "Z",
+  ".----": "1",
+  "..---": "2",
+  "...--": "3",
+  "....-": "4",
+  ".....": "5",
+  "-....": "6",
+  "--...": "7",
+  "---..": "8",
+  "----.": "9",
+  "-----": "0"
 };
 
 const BOARD_LAYOUT = [
@@ -72,6 +82,19 @@ const BOARD_LAYOUT = [
   { code: ".---", letter: "J", x: 554, y: 680, lx: 22, ly: -8 }
 ];
 
+const DIGIT_LAYOUT = [
+  { code: ".----", value: "1", x: 100, y: 822 },
+  { code: "..---", value: "2", x: 290, y: 822 },
+  { code: "...--", value: "3", x: 480, y: 822 },
+  { code: "....-", value: "4", x: 670, y: 822 },
+  { code: ".....", value: "5", x: 860, y: 822 },
+  { code: "-....", value: "6", x: 100, y: 910 },
+  { code: "--...", value: "7", x: 290, y: 910 },
+  { code: "---..", value: "8", x: 480, y: 910 },
+  { code: "----.", value: "9", x: 670, y: 910 },
+  { code: "-----", value: "0", x: 860, y: 910 }
+];
+
 const currentCodeEl = document.getElementById("currentCode");
 const currentLetterEl = document.getElementById("currentLetter");
 const outputTextEl = document.getElementById("outputText");
@@ -93,9 +116,11 @@ let audioContext = null;
 let oscillator = null;
 let gainNode = null;
 
-const nodeMap = new Map();
+const treeNodeMap = new Map();
+const digitNodeMap = new Map();
 const edgeMap = new Map();
 const layoutMap = new Map(BOARD_LAYOUT.map((item) => [item.code, item]));
+const digitLayoutMap = new Map(DIGIT_LAYOUT.map((item) => [item.code, item]));
 
 function createSvgEl(name, attrs = {}) {
   const el = document.createElementNS("http://www.w3.org/2000/svg", name);
@@ -107,7 +132,8 @@ function createSvgEl(name, attrs = {}) {
 
 function buildBoard() {
   boardEl.innerHTML = "";
-  nodeMap.clear();
+  treeNodeMap.clear();
+  digitNodeMap.clear();
   edgeMap.clear();
 
   const defs = createSvgEl("defs");
@@ -126,19 +152,22 @@ function buildBoard() {
   boardEl.appendChild(defs);
 
   boardEl.append(
-    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 704, rx: 28, class: "board-bg" }),
-    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 704, rx: 28, class: "board-frame" })
+    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 964, rx: 28, class: "board-bg" }),
+    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 964, rx: 28, class: "board-frame" })
   );
 
   const titleLeft = createSvgEl("text", { x: 40, y: 48, class: "board-title" });
   titleLeft.textContent = "MORSE";
   const titleRight = createSvgEl("text", { x: 667, y: 48, class: "board-title" });
   titleRight.textContent = "CODE";
-  boardEl.append(titleLeft, titleRight);
+  const digitTitle = createSvgEl("text", { x: 480, y: 758, class: "board-subtitle", "text-anchor": "middle" });
+  digitTitle.textContent = "NUMBERS";
+  boardEl.append(titleLeft, titleRight, digitTitle);
 
   const edgeLayer = createSvgEl("g", { id: "edgeLayer" });
   const nodeLayer = createSvgEl("g", { id: "nodeLayer" });
-  boardEl.append(edgeLayer, nodeLayer);
+  const digitLayer = createSvgEl("g", { id: "digitLayer" });
+  boardEl.append(edgeLayer, nodeLayer, digitLayer);
 
   for (const item of BOARD_LAYOUT) {
     if (item.code === "") continue;
@@ -153,7 +182,13 @@ function buildBoard() {
   for (const item of BOARD_LAYOUT) {
     const node = createNode(item);
     nodeLayer.appendChild(node);
-    nodeMap.set(item.code, node);
+    treeNodeMap.set(item.code, node);
+  }
+
+  for (const item of DIGIT_LAYOUT) {
+    const chip = createDigitChip(item);
+    digitLayer.appendChild(chip);
+    digitNodeMap.set(item.code, chip);
   }
 }
 
@@ -205,6 +240,30 @@ function createNode(item) {
     group.appendChild(label);
   }
 
+  return group;
+}
+
+function createDigitChip(item) {
+  const group = createSvgEl("g", {
+    class: "number-chip",
+    transform: `translate(${item.x}, ${item.y})`
+  });
+  group.dataset.code = item.code;
+
+  const rect = createSvgEl("rect", {
+    x: -68,
+    y: -28,
+    width: 136,
+    height: 56,
+    rx: 14,
+    class: "number-chip-body"
+  });
+  const digit = createSvgEl("text", { x: -34, y: 1, class: "number-chip-digit" });
+  digit.textContent = item.value;
+  const code = createSvgEl("text", { x: 18, y: 1, class: "number-chip-code" });
+  code.textContent = codeToDisplay(item.code).replace(/ /g, "");
+
+  group.append(rect, digit, code);
   return group;
 }
 
@@ -333,15 +392,22 @@ function updateDisplay() {
   outputTextEl.textContent = outputText || "-";
 }
 
-function updateBoardState(isFinal) {
-  for (const node of nodeMap.values()) {
+function clearStates() {
+  for (const node of treeNodeMap.values()) {
     node.classList.remove("path", "active", "final");
+  }
+  for (const node of digitNodeMap.values()) {
+    node.classList.remove("path", "current", "final");
   }
   for (const edge of edgeMap.values()) {
     edge.classList.remove("path");
   }
+}
 
-  const root = nodeMap.get("");
+function updateBoardState(isFinal) {
+  clearStates();
+
+  const root = treeNodeMap.get("");
   if (root) {
     root.classList.add("path");
   }
@@ -351,34 +417,29 @@ function updateBoardState(isFinal) {
 
   for (const symbol of currentCode) {
     partial += symbol;
-    const node = nodeMap.get(partial);
+    const node = treeNodeMap.get(partial);
     const edge = edgeMap.get(partial);
-    if (edge) {
-      edge.classList.add("path");
-    }
+    if (edge) edge.classList.add("path");
     if (node) {
       node.classList.add("path");
       lastMatchedCode = partial;
     }
   }
 
-  const activeCode = nodeMap.has(currentCode) ? currentCode : lastMatchedCode;
-  const activeNode = nodeMap.get(activeCode);
-  if (activeNode && currentCode) {
-    activeNode.classList.remove("path");
-    activeNode.classList.add(isFinal ? "final" : "active");
-    scrollBoardToNode(activeCode);
-  }
-}
+  if (!currentCode) return;
 
-function scrollBoardToNode(code) {
-  const item = layoutMap.get(code);
-  const scrollParent = boardEl.parentElement;
-  if (!item || !scrollParent) return;
-  const totalWidth = boardEl.viewBox.baseVal.width || 960;
-  const renderedX = (item.x / totalWidth) * boardEl.clientWidth;
-  const nextLeft = Math.max(0, renderedX - scrollParent.clientWidth / 2);
-  scrollParent.scrollTo({ left: nextLeft, behavior: "smooth" });
+  if (treeNodeMap.has(currentCode)) {
+    const node = treeNodeMap.get(currentCode);
+    node.classList.remove("path");
+    node.classList.add(isFinal ? "final" : "active");
+  } else if (digitNodeMap.has(currentCode)) {
+    const chip = digitNodeMap.get(currentCode);
+    chip.classList.add(isFinal ? "final" : "current");
+  } else if (lastMatchedCode && treeNodeMap.has(lastMatchedCode)) {
+    const node = treeNodeMap.get(lastMatchedCode);
+    node.classList.remove("path");
+    node.classList.add(isFinal ? "final" : "active");
+  }
 }
 
 function addSpace() {

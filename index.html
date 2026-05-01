@@ -11,7 +11,7 @@
   <main class="app">
     <header class="header">
       <h1>モールス信号練習</h1>
-      <p>参考画像に寄せたボード型です。●が短押し、■が長押し。通過した丸や四角は塗りつぶされます。</p>
+      <p>参考画像に寄せたボード型です。●が短押し、■が長押し。通過した丸や四角は塗りつぶされ、数字も追加済みです。</p>
     </header>
 
     <section class="panel status-panel" aria-label="入力状況">
@@ -66,8 +66,8 @@
     </section>
 
     <section class="panel board-panel" aria-label="モールス信号ボード">
-      <div class="board-scroll">
-        <svg id="morseBoard" class="morse-board" viewBox="0 0 960 720" role="img" aria-label="モールス信号ボード"></svg>
+      <div class="board-wrap">
+        <svg id="morseBoard" class="morse-board" viewBox="0 0 960 980" role="img" aria-label="モールス信号ボード"></svg>
       </div>
     </section>
 
@@ -78,7 +78,7 @@
         <button id="deleteButton" class="secondary-button" type="button">1つ戻る</button>
         <button id="resetButton" class="secondary-button danger" type="button">リセット</button>
       </div>
-      <p class="hint">マウス、タッチ、スペースキーで入力できます。入力後、少し待つと文字が確定します。数字は後で追加予定のため、未対応コードは ? で確定します。</p>
+      <p class="hint">スマホではボード全体が画面幅に収まるよう縮小表示されます。数字は下段の一覧に追加してあります。未対応コードは ? で確定します。</p>
     </section>
   </main>
 </body>
