@@ -41,8 +41,8 @@ const BOARD_NODES = {
   "..-": { x: 625, y: 330, kind: "dash", label: "U", lx: 575, ly: 340 },
   "...": { x: 728, y: 198, kind: "dot", label: "S", lx: 760, ly: 174 },
 
-  "----": { x: 46, y: 150, kind: "dash", label: "Q", lx: 40, ly: 228 },
-  "---.": { x: 265, y: 430, kind: "dot", label: "Z", lx: 315, ly: 430 },
+  "----": { x: 0, y: 0, kind: "dash", label: "" },
+  "--..": { x: 265, y: 430, kind: "dot", label: "Z", lx: 315, ly: 430 },
   "--.-": { x: 140, y: 330, kind: "dash", label: "Q", lx: 92, ly: 382 },
   "-.--": { x: 140, y: 555, kind: "dash", label: "Y", lx: 42, ly: 540 },
   "-.-.": { x: 265, y: 675, kind: "dot", label: "C", lx: 314, ly: 650 },
