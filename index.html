@@ -10,10 +10,8 @@
 <body>
   <main class="app">
     <header class="header">
-      <div>
-        <h1>モールス信号練習</h1>
-        <p>短押しは「・」、長押しは「－」。中心アンテナから経路をたどります。</p>
-      </div>
+      <h1>モールス信号練習</h1>
+      <p>参考画像に合わせて、線でつながるボード型にしました。●が短押し、■が長押しです。</p>
     </header>
 
     <section class="panel status-panel" aria-label="入力状況">
@@ -34,8 +32,8 @@
 
       <div class="time-meter-wrap">
         <div class="time-meter-labels">
-          <span>短押し</span>
-          <span>長押し判定</span>
+          <span>● 短押し</span>
+          <span>■ 長押し</span>
         </div>
         <div class="time-meter">
           <div id="timeBar" class="time-bar"></div>
@@ -44,9 +42,32 @@
       </div>
     </section>
 
-    <section class="panel tree-panel" aria-label="モールス信号ツリー">
-      <div class="tree-scroll">
-        <div id="morseTree" class="morse-tree" aria-live="polite"></div>
+    <section class="panel legend-panel" aria-label="記号説明">
+      <div class="legend-item">
+        <span class="shape-swatch dot" aria-hidden="true"></span>
+        <span>短押し</span>
+      </div>
+      <div class="legend-item">
+        <span class="shape-swatch dash" aria-hidden="true"></span>
+        <span>長押し</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-chip current"></span>
+        <span>現在位置</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-chip path"></span>
+        <span>通過済み</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-chip final"></span>
+        <span>確定位置</span>
+      </div>
+    </section>
+
+    <section class="panel board-panel" aria-label="モールス信号ボード">
+      <div class="board-scroll">
+        <svg id="morseBoard" class="morse-board" viewBox="0 0 960 660" role="img" aria-label="モールス信号ボード"></svg>
       </div>
     </section>
 
@@ -59,9 +80,7 @@
         <button id="resetButton" class="secondary-button danger" type="button">リセット</button>
       </div>
 
-      <p class="hint">
-        マウス、タッチ、スペースキーで入力できます。入力後、少し待つと文字が確定します。
-      </p>
+      <p class="hint">マウス、タッチ、スペースキーで入力できます。入力後、少し待つと文字が確定します。</p>
     </section>
   </main>
 </body>

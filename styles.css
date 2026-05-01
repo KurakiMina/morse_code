@@ -1,17 +1,16 @@
 :root {
-  --bg: #0f172a;
+  --bg: #0b1220;
   --panel: #111827;
-  --panel-2: #1f2937;
-  --text: #e5e7eb;
-  --muted: #94a3b8;
-  --line: #334155;
-  --active: #38bdf8;
-  --active-2: #22c55e;
+  --panel-2: #172033;
+  --text: #e5eefc;
+  --muted: #9fb1cc;
+  --line: #d7e3f4;
+  --dot: #89d5ff;
+  --dash: #ffad5c;
+  --current: #38bdf8;
+  --path: #22c55e;
+  --final: #facc15;
   --danger: #ef4444;
-  --short: #facc15;
-  --long: #fb7185;
-  --node: #1e293b;
-  --node-border: #475569;
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
 }
 
@@ -23,7 +22,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(56, 189, 248, 0.16), transparent 34rem),
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.14), transparent 34rem),
     var(--bg);
   color: var(--text);
   font-family:
@@ -39,9 +38,9 @@ button {
 }
 
 .app {
-  width: min(1180px, calc(100% - 24px));
+  width: min(1160px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 24px 0;
+  padding: 24px 0 36px;
 }
 
 .header {
@@ -61,7 +60,7 @@ button {
 }
 
 .panel {
-  background: rgba(17, 24, 39, 0.92);
+  background: rgba(17, 24, 39, 0.94);
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 20px;
   box-shadow: var(--shadow);
@@ -135,7 +134,7 @@ button {
 .time-bar {
   width: 0%;
   height: 100%;
-  background: linear-gradient(90deg, var(--short), var(--long));
+  background: linear-gradient(90deg, var(--dot), var(--dash));
   transition: width 40ms linear;
 }
 
@@ -148,101 +147,171 @@ button {
   background: rgba(255, 255, 255, 0.8);
 }
 
-.tree-panel {
+.legend-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.shape-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
+
+.shape-swatch.dot {
+  border-radius: 999px;
+  background: var(--dot);
+}
+
+.shape-swatch.dash {
+  border-radius: 4px;
+  background: var(--dash);
+}
+
+.legend-chip {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.legend-chip.current {
+  background: rgba(56, 189, 248, 0.28);
+  border: 2px solid var(--current);
+}
+
+.legend-chip.path {
+  background: rgba(34, 197, 94, 0.24);
+  border: 2px solid var(--path);
+}
+
+.legend-chip.final {
+  background: rgba(250, 204, 21, 0.24);
+  border: 2px solid var(--final);
+}
+
+.board-panel {
   overflow: hidden;
 }
 
-.tree-scroll {
+.board-scroll {
   overflow-x: auto;
   padding-bottom: 4px;
 }
 
-.morse-tree {
-  position: relative;
+.morse-board {
+  display: block;
+  width: 100%;
   min-width: 920px;
-  display: grid;
-  grid-template-columns: repeat(31, 1fr);
-  grid-auto-rows: 58px;
-  gap: 8px;
-  align-items: center;
+  height: auto;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.95), rgba(10, 15, 28, 0.95));
 }
 
-.node {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  min-width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: var(--node);
-  border: 1px solid var(--node-border);
-  color: var(--text);
-  font-weight: 800;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
-  user-select: none;
+.board-bg {
+  fill: url(#boardGradient);
 }
 
-.node.root {
-  background: #082f49;
-  border-color: var(--active);
+.board-frame {
+  fill: none;
+  stroke: rgba(216, 230, 249, 0.28);
+  stroke-width: 2;
 }
 
-.node.dot::after,
-.node.dash::after {
-  position: absolute;
-  right: -8px;
-  bottom: -8px;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  line-height: 1;
-  color: #020617;
-  font-weight: 900;
+.board-title {
+  fill: #dbe8fb;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: 4px;
 }
 
-.node.dot::after {
-  content: "・";
-  background: var(--short);
+.board-edge {
+  fill: none;
+  stroke: rgba(223, 236, 251, 0.85);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.node.dash::after {
-  content: "－";
-  background: var(--long);
+.board-edge.path {
+  stroke: var(--path);
+  stroke-width: 5;
 }
 
-.node.active {
-  background: rgba(56, 189, 248, 0.32);
-  border-color: var(--active);
-  outline: 3px solid rgba(56, 189, 248, 0.22);
+.board-node-shape {
+  fill: rgba(15, 23, 42, 0.96);
+  stroke: #dce6f4;
+  stroke-width: 3;
 }
 
-.node.path {
-  background: rgba(34, 197, 94, 0.26);
-  border-color: var(--active-2);
+.board-node.dot .board-node-shape {
+  fill: rgba(56, 189, 248, 0.08);
 }
 
-.node.final {
-  background: rgba(250, 204, 21, 0.28);
-  border-color: var(--short);
-  outline: 3px solid rgba(250, 204, 21, 0.2);
+.board-node.dash .board-node-shape {
+  fill: rgba(251, 146, 60, 0.08);
 }
 
-.edge {
-  position: absolute;
-  height: 2px;
-  background: rgba(148, 163, 184, 0.35);
-  transform-origin: left center;
-  z-index: 0;
-  pointer-events: none;
+.board-node.root .board-node-shape,
+.board-node.root .antenna-line {
+  stroke: var(--dot);
 }
 
-.edge.active {
-  background: var(--active-2);
-  height: 3px;
+.board-node.root .board-node-shape {
+  fill: rgba(56, 189, 248, 0.12);
+}
+
+.board-node.path .board-node-shape {
+  stroke: var(--path);
+  fill: rgba(34, 197, 94, 0.16);
+}
+
+.board-node.active .board-node-shape {
+  stroke: var(--current);
+  fill: rgba(56, 189, 248, 0.22);
+}
+
+.board-node.final .board-node-shape {
+  stroke: var(--final);
+  fill: rgba(250, 204, 21, 0.2);
+}
+
+.board-node-label {
+  fill: #e5eefc;
+  font-size: 24px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.board-node-note {
+  fill: rgba(229, 238, 252, 0.74);
+  font-size: 13px;
+  text-anchor: middle;
+}
+
+.board-node.active .board-node-label,
+.board-node.final .board-node-label,
+.board-node.path .board-node-label {
+  fill: #ffffff;
+}
+
+.antenna-line {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .control-panel {
@@ -288,7 +357,7 @@ button {
 }
 
 .secondary-button:hover {
-  border-color: var(--active);
+  border-color: var(--current);
 }
 
 .secondary-button.danger {
@@ -305,8 +374,8 @@ button {
 
 @media (max-width: 760px) {
   .app {
-    width: min(100% - 16px, 1180px);
-    padding: 12px 0;
+    width: min(100% - 16px, 1160px);
+    padding: 12px 0 24px;
   }
 
   .panel {
@@ -318,17 +387,8 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .morse-tree {
-    min-width: 760px;
-    grid-auto-rows: 52px;
-    gap: 6px;
-  }
-
-  .node {
-    min-width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    font-size: 0.92rem;
+  .morse-board {
+    min-width: 860px;
   }
 
   .key-button {

@@ -44,11 +44,42 @@ const MORSE_TABLE = {
   "-----": "0"
 };
 
+const BOARD_LAYOUT = [
+  { code: "", letter: "", x: 480, y: 86, labelDx: 0, labelDy: 0, note: "" },
+  { code: "-", letter: "T", x: 312, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "--", letter: "M", x: 196, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "---", letter: "O", x: 88, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "--.", letter: "G", x: 196, y: 238, labelDx: 24, labelDy: -6 },
+  { code: "--..", letter: "Z", x: 196, y: 320, labelDx: 24, labelDy: -6 },
+  { code: "--.-", letter: "Q", x: 78, y: 238, labelDx: -26, labelDy: -6 },
+  { code: "-.", letter: "N", x: 364, y: 392, labelDx: 22, labelDy: -8 },
+  { code: "-.-", letter: "K", x: 152, y: 392, labelDx: -22, labelDy: -8 },
+  { code: "-.-.", letter: "C", x: 152, y: 486, labelDx: -22, labelDy: -8 },
+  { code: "-.--", letter: "Y", x: 58, y: 392, labelDx: -20, labelDy: -8 },
+  { code: "-..", letter: "D", x: 282, y: 548, labelDx: 24, labelDy: -6 },
+  { code: "-...", letter: "B", x: 282, y: 626, labelDx: -18, labelDy: -8 },
+  { code: "-..-", letter: "X", x: 88, y: 548, labelDx: -20, labelDy: -8 },
+
+  { code: ".", letter: "E", x: 552, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "..", letter: "I", x: 640, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "...", letter: "S", x: 730, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "....", letter: "H", x: 820, y: 120, labelDx: 0, labelDy: -28 },
+  { code: "..-", letter: "U", x: 640, y: 238, labelDx: -22, labelDy: -8 },
+  { code: "..-.", letter: "F", x: 640, y: 320, labelDx: 24, labelDy: -6 },
+  { code: "...-", letter: "V", x: 730, y: 238, labelDx: 22, labelDy: -8 },
+  { code: ".-", letter: "A", x: 536, y: 454, labelDx: -22, labelDy: -8 },
+  { code: ".-.", letter: "R", x: 624, y: 454, labelDx: 22, labelDy: -8 },
+  { code: ".-..", letter: "L", x: 718, y: 454, labelDx: 20, labelDy: -8 },
+  { code: ".--", letter: "W", x: 536, y: 548, labelDx: -22, labelDy: -8 },
+  { code: ".--.", letter: "P", x: 622, y: 548, labelDx: 22, labelDy: -8 },
+  { code: ".---", letter: "J", x: 536, y: 626, labelDx: 22, labelDy: -8 }
+];
+
 const currentCodeEl = document.getElementById("currentCode");
 const currentLetterEl = document.getElementById("currentLetter");
 const outputTextEl = document.getElementById("outputText");
 const timeBarEl = document.getElementById("timeBar");
-const treeEl = document.getElementById("morseTree");
+const boardEl = document.getElementById("morseBoard");
 const keyButton = document.getElementById("keyButton");
 const spaceButton = document.getElementById("spaceButton");
 const deleteButton = document.getElementById("deleteButton");
@@ -67,94 +98,142 @@ let gainNode = null;
 
 const nodeMap = new Map();
 const edgeMap = new Map();
+const BOARD_CENTER_X = 480;
 
-function buildMorseTree() {
-  treeEl.innerHTML = "";
+function createSvgEl(name, attrs = {}) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [key, value] of Object.entries(attrs)) {
+    el.setAttribute(key, String(value));
+  }
+  return el;
+}
+
+function buildBoard() {
+  boardEl.innerHTML = "";
   nodeMap.clear();
   edgeMap.clear();
 
-  addNode("", "ANT", 1, 16, "root");
+  const defs = createSvgEl("defs");
+  const gradient = createSvgEl("linearGradient", {
+    id: "boardGradient",
+    x1: "0%",
+    y1: "0%",
+    x2: "0%",
+    y2: "100%"
+  });
+  gradient.append(
+    createSvgEl("stop", { offset: "0%", "stop-color": "#112038" }),
+    createSvgEl("stop", { offset: "100%", "stop-color": "#08101d" })
+  );
+  defs.appendChild(gradient);
+  boardEl.appendChild(defs);
 
-  for (const [code, letter] of Object.entries(MORSE_TABLE)) {
-    const row = code.length + 1;
-    const col = getGridColumn(code);
-    const typeClass = code.endsWith(".") ? "dot" : "dash";
-    addNode(code, letter, row, col, typeClass);
+  boardEl.append(
+    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 644, rx: 28, class: "board-bg" }),
+    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 644, rx: 28, class: "board-frame" })
+  );
+
+  const titleLeft = createSvgEl("text", { x: 44, y: 48, class: "board-title" });
+  titleLeft.textContent = "MORSE";
+  const titleRight = createSvgEl("text", { x: 664, y: 48, class: "board-title" });
+  titleRight.textContent = "CODE";
+  boardEl.append(titleLeft, titleRight);
+
+  const edgeLayer = createSvgEl("g", { id: "edgeLayer" });
+  const nodeLayer = createSvgEl("g", { id: "nodeLayer" });
+  boardEl.append(edgeLayer, nodeLayer);
+
+  const layoutMap = new Map(BOARD_LAYOUT.map((item) => [item.code, item]));
+
+  for (const item of BOARD_LAYOUT) {
+    if (item.code === "") continue;
+    const parent = layoutMap.get(item.code.slice(0, -1));
+    if (!parent) continue;
+
+    const edge = createEdge(parent, item);
+    edge.dataset.code = item.code;
+    edgeLayer.appendChild(edge);
+    edgeMap.set(item.code, edge);
   }
 
-  requestAnimationFrame(drawEdges);
-}
-
-function getGridColumn(code) {
-  let index = 0;
-
-  for (const symbol of code) {
-    index = index * 2 + (symbol === "." ? 0 : 1);
-  }
-
-  const depth = code.length;
-  const slots = 2 ** depth;
-  const span = 32 / slots;
-
-  return Math.round(index * span + span / 2);
-}
-
-function addNode(code, label, row, col, className) {
-  const node = document.createElement("div");
-  node.className = `node ${className}`;
-  node.dataset.code = code;
-  node.textContent = label;
-  node.style.gridRow = String(row);
-  node.style.gridColumn = String(col);
-
-  treeEl.appendChild(node);
-  nodeMap.set(code, node);
-}
-
-function drawEdges() {
-  const existingEdges = treeEl.querySelectorAll(".edge");
-  existingEdges.forEach((edge) => edge.remove());
-  edgeMap.clear();
-
-  for (const code of nodeMap.keys()) {
-    if (code === "") continue;
-
-    const parentCode = code.slice(0, -1);
-    const parentNode = nodeMap.get(parentCode);
-    const childNode = nodeMap.get(code);
-
-    if (!parentNode || !childNode) continue;
-
-    const edge = createEdge(parentNode, childNode);
-    edge.dataset.code = code;
-    treeEl.appendChild(edge);
-    edgeMap.set(code, edge);
+  for (const item of BOARD_LAYOUT) {
+    const group = createNode(item);
+    nodeLayer.appendChild(group);
+    nodeMap.set(item.code, group);
   }
 }
 
-function createEdge(fromNode, toNode) {
-  const treeRect = treeEl.getBoundingClientRect();
-  const fromRect = fromNode.getBoundingClientRect();
-  const toRect = toNode.getBoundingClientRect();
+function createEdge(parent, child) {
+  const sameRow = parent.y === child.y;
+  let points = "";
 
-  const x1 = fromRect.left + fromRect.width / 2 - treeRect.left + treeEl.scrollLeft;
-  const y1 = fromRect.top + fromRect.height / 2 - treeRect.top + treeEl.scrollTop;
-  const x2 = toRect.left + toRect.width / 2 - treeRect.left + treeEl.scrollLeft;
-  const y2 = toRect.top + toRect.height / 2 - treeRect.top + treeEl.scrollTop;
+  if (sameRow) {
+    points = `${parent.x},${parent.y} ${child.x},${child.y}`;
+  } else if (parent.x === child.x) {
+    points = `${parent.x},${parent.y} ${child.x},${child.y}`;
+  } else {
+    const midY = Math.round((parent.y + child.y) / 2);
+    points = `${parent.x},${parent.y} ${parent.x},${midY} ${child.x},${midY} ${child.x},${child.y}`;
+  }
 
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  return createSvgEl("polyline", {
+    points,
+    class: "board-edge"
+  });
+}
 
-  const edge = document.createElement("div");
-  edge.className = "edge";
-  edge.style.width = `${length}px`;
-  edge.style.left = `${x1}px`;
-  edge.style.top = `${y1}px`;
-  edge.style.transform = `rotate(${angle}deg)`;
+function createNode(item) {
+  const group = createSvgEl("g", {
+    class: item.code === "" ? "board-node root" : `board-node ${item.code.endsWith(".") ? "dot" : "dash"}`,
+    transform: `translate(${item.x}, ${item.y})`
+  });
+  group.dataset.code = item.code;
 
-  return edge;
+  if (item.code === "") {
+    const antenna = createSvgEl("path", {
+      d: "M -14 10 L 0 -12 L 14 10 M -8 2 L 0 -12 L 8 2 M 0 -12 L 0 18",
+      class: "antenna-line"
+    });
+    const base = createSvgEl("circle", {
+      cx: 0,
+      cy: 20,
+      r: 10,
+      class: "board-node-shape"
+    });
+    group.append(antenna, base);
+  } else if (item.code.endsWith(".")) {
+    group.appendChild(
+      createSvgEl("circle", {
+        cx: 0,
+        cy: 0,
+        r: 12,
+        class: "board-node-shape"
+      })
+    );
+  } else {
+    group.appendChild(
+      createSvgEl("rect", {
+        x: -12,
+        y: -12,
+        width: 24,
+        height: 24,
+        rx: 3,
+        class: "board-node-shape"
+      })
+    );
+  }
+
+  if (item.letter) {
+    const label = createSvgEl("text", {
+      x: item.labelDx,
+      y: item.labelDy,
+      class: "board-node-label"
+    });
+    label.textContent = item.letter;
+    group.appendChild(label);
+  }
+
+  return group;
 }
 
 function ensureAudioContext() {
@@ -181,7 +260,6 @@ function startTone() {
 
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-
   oscillator.start();
 }
 
@@ -196,10 +274,7 @@ function stopTone() {
 }
 
 function startPress(event) {
-  if (event) {
-    event.preventDefault();
-  }
-
+  if (event) event.preventDefault();
   if (isPressing) return;
 
   isPressing = true;
@@ -212,10 +287,7 @@ function startPress(event) {
 }
 
 function endPress(event) {
-  if (event) {
-    event.preventDefault();
-  }
-
+  if (event) event.preventDefault();
   if (!isPressing) return;
 
   const duration = performance.now() - pressStartTime;
@@ -223,7 +295,6 @@ function endPress(event) {
 
   isPressing = false;
   keyButton.classList.remove("pressing");
-
   stopTone();
   cancelAnimationFrame(pressAnimationId);
   updateTimeBar(0);
@@ -255,7 +326,7 @@ function appendSymbol(symbol) {
 
   currentCode = nextCode;
   updateDisplay();
-  updateTreeState(false);
+  updateBoardState(false);
 
   clearTimeout(commitTimerId);
   commitTimerId = setTimeout(commitLetter, LETTER_COMMIT_DELAY_MS);
@@ -264,17 +335,15 @@ function appendSymbol(symbol) {
 function commitLetter() {
   if (!currentCode) return;
 
-  updateTreeState(true);
-
+  updateBoardState(true);
   const letter = MORSE_TABLE[currentCode] || "?";
   outputText += letter;
-
   currentCode = "";
 
   setTimeout(() => {
     updateDisplay();
-    updateTreeState(false);
-  }, 180);
+    updateBoardState(false);
+  }, 240);
 }
 
 function flashInvalid() {
@@ -292,19 +361,24 @@ function flashInvalid() {
   );
 }
 
+function codeToDisplay(code) {
+  if (!code) return "未入力";
+  return [...code].map((symbol) => (symbol === "." ? "●" : "■")).join(" ");
+}
+
 function updateDisplay() {
-  currentCodeEl.textContent = currentCode || "未入力";
+  currentCodeEl.textContent = codeToDisplay(currentCode);
   currentLetterEl.textContent = currentCode ? (MORSE_TABLE[currentCode] || "?") : "-";
   outputTextEl.textContent = outputText || "-";
 }
 
-function updateTreeState(isFinal) {
+function updateBoardState(isFinal) {
   for (const node of nodeMap.values()) {
-    node.classList.remove("active", "path", "final");
+    node.classList.remove("path", "active", "final");
   }
 
   for (const edge of edgeMap.values()) {
-    edge.classList.remove("active");
+    edge.classList.remove("path");
   }
 
   const root = nodeMap.get("");
@@ -313,41 +387,32 @@ function updateTreeState(isFinal) {
   }
 
   let partial = "";
-
   for (const symbol of currentCode) {
     partial += symbol;
-
     const node = nodeMap.get(partial);
     const edge = edgeMap.get(partial);
-
     if (node) node.classList.add("path");
-    if (edge) edge.classList.add("active");
+    if (edge) edge.classList.add("path");
   }
 
   const activeNode = nodeMap.get(currentCode);
   if (activeNode && currentCode) {
+    activeNode.classList.remove("path");
     activeNode.classList.add(isFinal ? "final" : "active");
-    scrollNodeIntoView(activeNode);
+    scrollBoardToNode(currentCode);
   }
 }
 
-function scrollNodeIntoView(node) {
-  const scrollParent = treeEl.parentElement;
-  if (!scrollParent) return;
+function scrollBoardToNode(code) {
+  const item = BOARD_LAYOUT.find((node) => node.code === code);
+  const scrollParent = boardEl.parentElement;
+  if (!item || !scrollParent) return;
 
-  const nodeRect = node.getBoundingClientRect();
-  const scrollRect = scrollParent.getBoundingClientRect();
-
-  const isLeftOut = nodeRect.left < scrollRect.left;
-  const isRightOut = nodeRect.right > scrollRect.right;
-
-  if (isLeftOut || isRightOut) {
-    node.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest"
-    });
-  }
+  const totalWidth = boardEl.viewBox.baseVal.width || 960;
+  const target = (item.x / totalWidth) * boardEl.clientWidth;
+  const centerOffset = scrollParent.clientWidth / 2;
+  const nextLeft = Math.max(0, target - centerOffset);
+  scrollParent.scrollTo({ left: nextLeft, behavior: "smooth" });
 }
 
 function addSpace() {
@@ -366,7 +431,7 @@ function deleteLast() {
 
   clearTimeout(commitTimerId);
   updateDisplay();
-  updateTreeState(false);
+  updateBoardState(false);
 }
 
 function resetAll() {
@@ -374,7 +439,7 @@ function resetAll() {
   outputText = "";
   clearTimeout(commitTimerId);
   updateDisplay();
-  updateTreeState(false);
+  updateBoardState(false);
 }
 
 keyButton.addEventListener("pointerdown", startPress);
@@ -411,10 +476,6 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-window.addEventListener("resize", () => {
-  requestAnimationFrame(drawEdges);
-});
-
-buildMorseTree();
+buildBoard();
 updateDisplay();
-updateTreeState(false);
+updateBoardState(false);
