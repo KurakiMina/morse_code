@@ -571,7 +571,7 @@ button {
 
 /* Additional modes. Classic mode selectors above are intentionally left unchanged. */
 .mode-panel {
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
 }
 
 .practice-layout {
@@ -1045,3 +1045,48 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Training mode: independent additions. */
+.mode-button.training { background: linear-gradient(180deg, #a78bfa, #6d28d9); color: #f5f3ff; }
+.training-panel { display: grid; gap: 14px; }
+.training-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.training-segmented, .training-field { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(148, 163, 184, 0.28); background: var(--panel-2); border-radius: 999px; padding: 5px; }
+.training-segmented button { border: 0; border-radius: 999px; padding: 9px 12px; background: transparent; color: var(--muted); font-weight: 900; cursor: pointer; }
+.training-segmented button.active { background: #e5eefc; color: #111827; }
+.training-field { padding: 8px 12px; color: var(--muted); font-weight: 800; }
+.training-field select { border: 0; background: transparent; color: var(--text); font-weight: 900; outline: none; }
+.training-layout { display: grid; grid-template-columns: minmax(420px, 1.15fr) minmax(300px, 0.85fr); gap: 14px; align-items: start; }
+.training-board-card, .training-side > *, .training-list-card { background: var(--panel-2); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 16px; padding: 12px; }
+.training-route-map { position: relative; min-height: 360px; overflow: hidden; border-radius: 14px; background: linear-gradient(rgba(148, 163, 184, 0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.10) 1px, transparent 1px), linear-gradient(180deg, #132845 0%, #0a1424 100%); background-size: 44px 44px; }
+.training-route-map svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.training-route-map line { stroke: rgba(216, 230, 249, 0.45); stroke-width: 4; stroke-linecap: round; }
+.training-route-map line.done { stroke: var(--path-stroke); stroke-width: 6; }
+.training-node { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; width: 58px; height: 58px; border: 3px solid rgba(216, 230, 249, 0.84); color: #eff6ff; font-weight: 900; box-shadow: 0 10px 20px rgba(0,0,0,0.22); user-select: none; }
+.training-node.root { border-radius: 999px; background: rgba(56, 189, 248, 0.14); }
+.training-node.dot { border-radius: 999px; background: var(--dot-fill); border-color: var(--dot-stroke); }
+.training-node.dash { border-radius: 10px; background: var(--dash-fill); border-color: var(--dash-stroke); }
+.training-node.done { background: var(--path-fill); border-color: var(--path-stroke); }
+.training-node.active { background: var(--current-fill); border-color: var(--current-stroke); }
+.training-node.wrong { background: rgba(239, 68, 68, 0.56); border-color: #fecaca; animation: expireShake 0.35s ease; }
+.training-side { display: grid; gap: 12px; }
+.training-target-char { display: block; margin: 6px 0; font-size: clamp(3.4rem, 12vw, 5.8rem); line-height: 1; text-align: center; }
+.training-target-sub { display: block; color: var(--muted); text-align: center; font-weight: 800; line-height: 1.45; }
+.training-input-display { display: block; min-height: 2.1em; margin-top: 6px; border: 2px dashed rgba(56, 189, 248, 0.35); border-radius: 14px; padding: 10px; background: rgba(2, 6, 23, 0.28); text-align: center; font-size: 1.65rem; letter-spacing: 0.16em; }
+.training-message { margin: 10px 0 0; padding: 10px; border-radius: 12px; color: #d8f2ff; background: rgba(56, 189, 248, 0.14); line-height: 1.55; font-weight: 800; }
+.training-message.good { color: #dcfce7; background: rgba(46, 196, 104, 0.18); }
+.training-message.bad { color: #fee2e2; background: rgba(239, 68, 68, 0.18); }
+.training-button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.training-symbol-button { min-height: 78px; border: 0; color: #00111f; font-size: 2rem; font-weight: 900; cursor: pointer; box-shadow: 0 12px 22px rgba(0,0,0,0.22); }
+.training-symbol-button span { display: block; margin-top: 4px; font-size: 0.85rem; }
+.training-symbol-button.dot { border-radius: 999px; background: linear-gradient(180deg, #bfeeff, #38bdf8); }
+.training-symbol-button.dash { border-radius: 16px; background: linear-gradient(180deg, #ffd09c, #f59e0b); }
+.training-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.training-stats strong { display: block; font-size: 1.8rem; }
+.training-char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 7px; max-height: 220px; overflow: auto; padding-top: 8px; }
+.training-char-item { border: 1px solid rgba(148, 163, 184, 0.28); border-radius: 10px; background: rgba(2, 6, 23, 0.24); color: var(--text); padding: 8px 4px; cursor: pointer; }
+.training-char-item.active { border-color: rgba(167, 139, 250, 0.9); background: rgba(167, 139, 250, 0.24); }
+.training-char-item .char { display: block; font-size: 1.2rem; font-weight: 900; }
+.training-char-item .code { display: block; color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
+@media (max-width: 900px) { .mode-panel, .training-layout { grid-template-columns: 1fr; } .training-route-map { min-height: 270px; } }
+@media (max-width: 760px) { .training-toolbar, .training-segmented, .training-field { width: 100%; } .training-segmented { justify-content: space-between; } .training-segmented button { flex: 1; } .training-node { width: 46px; height: 46px; border-width: 2px; font-size: 0.95rem; } .training-button-grid, .training-stats { grid-template-columns: 1fr; } }

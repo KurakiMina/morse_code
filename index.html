@@ -19,6 +19,7 @@
         <button id="classicModeButton" class="mode-button primary" type="button">クラシックモード</button>
         <button id="practiceModeButton" class="mode-button" type="button">練習モード</button>
         <button id="gameModeButton" class="mode-button accent" type="button">ゲームモード</button>
+        <button id="trainingModeButton" class="mode-button training" type="button">訓練モード</button>
       </section>
 
       <section class="panel sound-panel" aria-label="音声設定">
@@ -148,6 +149,48 @@
 
         <div class="practice-board-card">
           <svg id="practiceBoard" class="morse-board practice-board" viewBox="0 0 960 980" role="img" aria-label="練習モードのモールス信号ボード"></svg>
+        </div>
+      </section>
+    </section>
+
+
+    <section id="trainingScreen" class="screen hidden">
+      <header class="header with-back">
+        <button id="trainingBackButton" class="back-button" type="button">← 戻る</button>
+        <div>
+          <h1>訓練モード</h1>
+          <p>英字・数字・和文ひらがなを対象に、提示された1文字をモールス信号で入力します。完全一致で自動判定し、確定ボタンは使いません。</p>
+        </div>
+        <button class="sound-toggle compact" data-sound-toggle type="button" aria-pressed="true">音声 ON</button>
+      </header>
+
+      <section class="panel training-panel" aria-label="訓練モード">
+        <div class="training-toolbar" aria-label="訓練設定">
+          <div class="training-segmented" role="tablist" aria-label="文字種">
+            <button type="button" class="active" data-training-mode="latin">英字</button>
+            <button type="button" data-training-mode="number">数字</button>
+            <button type="button" data-training-mode="kana">ひらがな</button>
+          </div>
+          <label class="training-field">出題
+            <select id="trainingLevelSelect">
+              <option value="basic">基本</option>
+              <option value="dakuten">濁音/半濁音</option>
+              <option value="all">すべて</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="training-layout">
+          <section class="training-board-card" aria-label="入力ルート"><div id="trainingRouteMap" class="training-route-map"></div></section>
+          <section class="training-side" aria-label="訓練操作">
+            <div class="training-target-card"><span class="label">ターゲット</span><strong id="trainingTargetChar" class="training-target-char">A</strong><span id="trainingTargetSub" class="training-target-sub">A / ●■</span></div>
+            <div class="training-input-card"><span class="label">現在入力</span><strong id="trainingCurrentInput" class="training-input-display">未入力</strong><p id="trainingMessage" class="training-message">短音または長音を入力してください。</p></div>
+            <div class="training-button-grid"><button id="trainingDotButton" class="training-symbol-button dot" type="button">●<span>短音</span></button><button id="trainingDashButton" class="training-symbol-button dash" type="button">■<span>長音</span></button></div>
+            <button id="trainingKeyButton" class="key-button hold-key-button" type="button"><span class="key-button-label">押す</span><span id="trainingHoldBar" class="key-hold-bar" aria-hidden="true"></span></button>
+            <div class="button-row"><button id="trainingResetButton" class="secondary-button" type="button">入力リセット</button><button id="trainingNextButton" class="secondary-button" type="button">次の問題</button></div>
+            <div class="training-stats"><div class="status-card"><span class="label">正解</span><strong id="trainingOkCount">0</strong></div><div class="status-card"><span class="label">ミス</span><strong id="trainingMissCount">0</strong></div><div class="status-card"><span class="label">連続</span><strong id="trainingStreakCount">0</strong></div></div>
+            <div class="training-list-card"><span class="label">文字一覧</span><div id="trainingCharGrid" class="training-char-grid"></div></div>
+          </section>
         </div>
       </section>
     </section>

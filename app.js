@@ -30,6 +30,28 @@ const MORSE = {
   6: "-....", 7: "--...", 8: "---..", 9: "----."
 };
 const CODE_TO_CHAR = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
+const KANA_MORSE = {
+  "あ": "--.--", "い": ".-", "う": "..-", "え": "-.---", "お": ".-...",
+  "か": ".-..", "き": "-.-..", "く": "...-", "け": "-.--", "こ": "----",
+  "さ": "-.-.-", "し": "--.-.", "す": "---.-", "せ": ".---.", "そ": "---.",
+  "た": "-.", "ち": "..-.", "つ": ".--.", "て": ".-.--", "と": "..-..",
+  "な": ".-.", "に": "-.-.", "ぬ": "....", "ね": "--.-", "の": "..--",
+  "は": "-...", "ひ": "--..-", "ふ": "--..", "へ": ".", "ほ": "-..",
+  "ま": "-..-", "み": "..-.-", "む": "-", "め": "-...-", "も": "-..-.",
+  "や": ".--", "ゆ": "-..--", "よ": "--",
+  "ら": "...", "り": "--.", "る": "-.--.", "れ": "---", "ろ": ".-.-",
+  "わ": "-.-", "を": ".---", "ん": ".-.-.", "ー": ".--.-"
+};
+const KANA_DAKUTEN = {
+  "が": ["か", ".."], "ぎ": ["き", ".."], "ぐ": ["く", ".."], "げ": ["け", ".."], "ご": ["こ", ".."],
+  "ざ": ["さ", ".."], "じ": ["し", ".."], "ず": ["す", ".."], "ぜ": ["せ", ".."], "ぞ": ["そ", ".."],
+  "だ": ["た", ".."], "ぢ": ["ち", ".."], "づ": ["つ", ".."], "で": ["て", ".."], "ど": ["と", ".."],
+  "ば": ["は", ".."], "び": ["ひ", ".."], "ぶ": ["ふ", ".."], "べ": ["へ", ".."], "ぼ": ["ほ", ".."]
+};
+const KANA_HANDAKUTEN = { "ぱ": ["は", "..--."], "ぴ": ["ひ", "..--."], "ぷ": ["ふ", "..--."], "ぺ": ["へ", "..--."], "ぽ": ["ほ", "..--."] };
+const SMALL_KANA_MAP = { "ぁ": "あ", "ぃ": "い", "ぅ": "う", "ぇ": "え", "ぉ": "お", "ゃ": "や", "ゅ": "ゆ", "ょ": "よ", "っ": "つ", "ゎ": "わ" };
+const KANA_BASIC = ["あ", "い", "う", "え", "お", "か", "き", "く", "け", "こ", "さ", "し", "す", "せ", "そ", "た", "ち", "つ", "て", "と", "な", "に", "ぬ", "ね", "の", "は", "ひ", "ふ", "へ", "ほ", "ま", "み", "む", "め", "も", "や", "ゆ", "よ", "ら", "り", "る", "れ", "ろ", "わ", "を", "ん"];
+const KANA_MARKED = ["が", "ぎ", "ぐ", "げ", "ご", "ざ", "じ", "ず", "ぜ", "ぞ", "だ", "ぢ", "づ", "で", "ど", "ば", "び", "ぶ", "べ", "ぼ", "ぱ", "ぴ", "ぷ", "ぺ", "ぽ"];
 
 const WORDS = {
   easy: ["IT", "ON", "GO", "UP", "NO", "CAT", "DOG", "SUN", "SKY", "SEA"],
@@ -104,6 +126,18 @@ const state = {
     output: "",
     expireTimer: null
   },
+  training: {
+    mode: "latin",
+    level: "basic",
+    target: "A",
+    partIndex: 0,
+    input: "",
+    wrong: false,
+    correct: 0,
+    misses: 0,
+    streak: 0,
+    lastTarget: null
+  },
   soundEnabled: true,
   audioContext: null,
   game: null
@@ -113,16 +147,20 @@ const el = {};
 
 document.addEventListener("DOMContentLoaded", () => {
   [
-    "modeScreen", "classicScreen", "practiceScreen", "gameScreen",
+    "modeScreen", "classicScreen", "practiceScreen", "trainingScreen", "gameScreen",
     "soundToggleButton",
-    "classicModeButton", "practiceModeButton", "gameModeButton",
-    "classicBackButton", "practiceBackButton", "gameBackButton",
+    "classicModeButton", "practiceModeButton", "gameModeButton", "trainingModeButton",
+    "classicBackButton", "practiceBackButton", "trainingBackButton", "gameBackButton",
 
     "currentCode", "currentLetter", "outputText", "timeBar", "morseBoard",
     "keyButton", "spaceButton", "deleteButton", "resetButton",
 
     "practiceCurrentCode", "practiceCurrentLetter", "practiceOutputText", "practiceBoard",
     "practiceKeyButton", "practiceHoldBar", "practiceSpaceButton", "practiceDeleteButton", "practiceResetButton",
+
+    "trainingLevelSelect", "trainingRouteMap", "trainingTargetChar", "trainingTargetSub", "trainingCurrentInput", "trainingMessage",
+    "trainingDotButton", "trainingDashButton", "trainingKeyButton", "trainingHoldBar", "trainingResetButton", "trainingNextButton",
+    "trainingOkCount", "trainingMissCount", "trainingStreakCount", "trainingCharGrid",
 
     "gameIntroPanel", "gamePlayPanel", "gameResultPanel",
     "startGameButton", "playAgainButton", "backToGameIntroButton",
@@ -137,11 +175,13 @@ document.addEventListener("DOMContentLoaded", () => {
   el.classicModeButton.addEventListener("click", () => showScreen("classic"));
   el.practiceModeButton.addEventListener("click", () => showScreen("practice"));
   el.gameModeButton.addEventListener("click", () => showScreen("game"));
+  el.trainingModeButton.addEventListener("click", () => showScreen("training"));
 
   setupSoundToggles();
 
   el.classicBackButton.addEventListener("click", () => showScreen("mode"));
   el.practiceBackButton.addEventListener("click", () => showScreen("mode"));
+  el.trainingBackButton.addEventListener("click", () => showScreen("mode"));
   el.gameBackButton.addEventListener("click", () => {
     stopGame();
     showScreen("mode");
@@ -156,6 +196,8 @@ document.addEventListener("DOMContentLoaded", () => {
   el.practiceSpaceButton.addEventListener("click", confirmPractice);
   el.practiceDeleteButton.addEventListener("click", deletePractice);
   el.practiceResetButton.addEventListener("click", resetPractice);
+
+  setupTraining();
 
   setupPressButton(el.gameKeyButton, addGameSymbol, null, el.gameHoldBar, true);
   el.gameDotButton.addEventListener("click", () => {
@@ -179,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateClassic();
   renderBoardTo(el.practiceBoard, "");
   updatePractice();
+  chooseTrainingTarget();
   showGameIntro();
   renderRanking();
 });
@@ -188,6 +231,7 @@ function showScreen(screen) {
   el.modeScreen.classList.toggle("hidden", screen !== "mode");
   el.classicScreen.classList.toggle("hidden", screen !== "classic");
   el.practiceScreen.classList.toggle("hidden", screen !== "practice");
+  el.trainingScreen.classList.toggle("hidden", screen !== "training");
   el.gameScreen.classList.toggle("hidden", screen !== "game");
 
   if (screen === "classic") {
@@ -196,6 +240,9 @@ function showScreen(screen) {
   }
   if (screen === "practice") {
     updatePractice();
+  }
+  if (screen === "training") {
+    updateTraining();
   }
   if (screen === "game") {
     showGameIntro();
@@ -408,6 +455,13 @@ function handleKeyboard(event) {
       event.preventDefault();
       confirmPractice();
     }
+  }
+
+  if (state.screen === "training") {
+    if (event.key === "." || event.key.toLowerCase() === "j") addTrainingSymbol(".");
+    if (event.key === "-" || event.key.toLowerCase() === "k") addTrainingSymbol("-");
+    if (event.key === "Backspace") deleteTrainingInput();
+    if (event.key === "Enter") { event.preventDefault(); chooseTrainingTarget(); }
   }
 
   if (state.screen === "game" && state.game) {
@@ -677,6 +731,205 @@ function flashElement(target) {
   target.classList.remove("input-expire");
   void target.offsetWidth;
   target.classList.add("input-expire");
+}
+
+/* Training mode */
+function setupTraining() {
+  document.querySelectorAll("[data-training-mode]").forEach(button => button.addEventListener("click", () => setTrainingMode(button.dataset.trainingMode)));
+  el.trainingLevelSelect.addEventListener("change", event => { state.training.level = event.target.value; chooseTrainingTarget(); });
+  el.trainingDotButton.addEventListener("click", () => { playSe("dot"); addTrainingSymbol("."); });
+  el.trainingDashButton.addEventListener("click", () => { playSe("dash"); addTrainingSymbol("-"); });
+  setupPressButton(el.trainingKeyButton, addTrainingSymbol, null, el.trainingHoldBar, true);
+  el.trainingResetButton.addEventListener("click", resetTrainingInput);
+  el.trainingNextButton.addEventListener("click", chooseTrainingTarget);
+  el.trainingLevelSelect.disabled = true;
+}
+function setTrainingMode(mode) {
+  state.training.mode = mode;
+  state.training.level = "basic";
+  el.trainingLevelSelect.value = "basic";
+  el.trainingLevelSelect.disabled = mode !== "kana";
+  document.querySelectorAll("[data-training-mode]").forEach(button => button.classList.toggle("active", button.dataset.trainingMode === mode));
+  chooseTrainingTarget();
+}
+function normalizeKana(char) { return SMALL_KANA_MAP[char] || char; }
+function getKanaMorseParts(char) {
+  const c = normalizeKana(char);
+  if (KANA_MORSE[c]) return [{ label: c, code: KANA_MORSE[c], kind: "文字" }];
+  if (KANA_DAKUTEN[c]) {
+    const base = KANA_DAKUTEN[c][0];
+    const mark = KANA_DAKUTEN[c][1];
+    return [{ label: base, code: KANA_MORSE[base], kind: "清音" }, { label: "゛", code: mark, kind: "濁点" }];
+  }
+  if (KANA_HANDAKUTEN[c]) {
+    const base = KANA_HANDAKUTEN[c][0];
+    const mark = KANA_HANDAKUTEN[c][1];
+    return [{ label: base, code: KANA_MORSE[base], kind: "清音" }, { label: "゜", code: mark, kind: "半濁点" }];
+  }
+  return [];
+}
+function getTrainingParts(char = state.training.target) {
+  if (state.training.mode === "kana") return getKanaMorseParts(char);
+  if (state.training.mode === "number") return [{ label: char, code: MORSE[char], kind: "数字" }];
+  return [{ label: char, code: MORSE[char], kind: "英字" }];
+}
+function getTrainingCurrentPart() { return getTrainingParts()[state.training.partIndex] || null; }
+function getTrainingPool() {
+  if (state.training.mode === "number") return Object.keys(MORSE).filter(char => /^\d$/.test(char));
+  if (state.training.mode === "kana") {
+    if (state.training.level === "dakuten") return KANA_MARKED;
+    if (state.training.level === "all") return [...KANA_BASIC, ...KANA_MARKED, "ー"];
+    return KANA_BASIC;
+  }
+  return Object.keys(MORSE).filter(char => /^[A-Z]$/.test(char));
+}
+function chooseTrainingTarget() {
+  const pool = getTrainingPool();
+  if (!pool.length) return;
+  let next = pool[Math.floor(Math.random() * pool.length)];
+  while (pool.length > 1 && next === state.training.lastTarget) next = pool[Math.floor(Math.random() * pool.length)];
+  state.training.target = next;
+  state.training.lastTarget = next;
+  state.training.partIndex = 0;
+  state.training.input = "";
+  state.training.wrong = false;
+  setTrainingMessage("短音または長音を入力してください。", "");
+  updateTraining();
+}
+function addTrainingSymbol(symbol) {
+  ensureAudioContext();
+  const current = getTrainingCurrentPart();
+  if (!current || state.training.wrong) return;
+  if (state.training.input.length >= current.code.length) return;
+  state.training.input += symbol;
+  if (!current.code.startsWith(state.training.input)) {
+    state.training.wrong = true;
+    state.training.misses += 1;
+    state.training.streak = 0;
+    playSe("miss");
+    setTrainingMessage("誤入力です。リセットして再入力してください。", "bad");
+    updateTraining();
+    return;
+  }
+  if (state.training.input !== current.code) {
+    setTrainingMessage("入力中です。現在の符号を最後まで入れてください。", "");
+    updateTraining();
+    return;
+  }
+  const parts = getTrainingParts();
+  if (state.training.partIndex < parts.length - 1) {
+    state.training.partIndex += 1;
+    state.training.input = "";
+    state.training.wrong = false;
+    const nextPart = getTrainingCurrentPart();
+    setTrainingMessage(`${nextPart.kind}「${nextPart.label}」を続けて入力してください。`, "");
+    updateTraining();
+    return;
+  }
+  state.training.correct += 1;
+  state.training.streak += 1;
+  playSe("correct");
+  setTrainingMessage("正解です。次の問題へ進みます。", "good");
+  updateTraining();
+  setTimeout(() => { if (state.screen === "training") chooseTrainingTarget(); }, 520);
+}
+function deleteTrainingInput() {
+  if (!state.training.input) return;
+  state.training.input = state.training.input.slice(0, -1);
+  state.training.wrong = false;
+  playSe("delete");
+  setTrainingMessage("1つ戻しました。", "");
+  updateTraining();
+}
+function resetTrainingInput() {
+  state.training.input = "";
+  state.training.wrong = false;
+  playSe("reset");
+  setTrainingMessage("入力をリセットしました。", "");
+  updateTraining();
+}
+function setTrainingMessage(message, kind = "") {
+  el.trainingMessage.textContent = message;
+  el.trainingMessage.className = `training-message${kind ? " " + kind : ""}`;
+}
+function updateTraining() {
+  const parts = getTrainingParts();
+  const current = getTrainingCurrentPart();
+  const allCode = parts.map(part => toDisplayCode(part.code)).join(" / ");
+  el.trainingTargetChar.textContent = state.training.target;
+  el.trainingTargetSub.textContent = parts.length > 1 && current ? `${current.kind}: ${current.label} / ${toDisplayCode(current.code)}　全体: ${allCode}` : `${state.training.target} / ${allCode}`;
+  el.trainingCurrentInput.textContent = state.training.input ? toDisplayCode(state.training.input) : "未入力";
+  el.trainingOkCount.textContent = state.training.correct;
+  el.trainingMissCount.textContent = state.training.misses;
+  el.trainingStreakCount.textContent = state.training.streak;
+  renderTrainingRouteMap(current ? current.code : "", state.training.input, state.training.wrong);
+  renderTrainingCharGrid();
+}
+function renderTrainingRouteMap(targetCode, activeCode, wrong) {
+  const container = el.trainingRouteMap;
+  if (!container) return;
+  container.innerHTML = "";
+  if (!targetCode) return;
+  const rect = container.getBoundingClientRect();
+  const width = Math.max(rect.width || 520, 320);
+  const height = Math.max(rect.height || 320, 240);
+  const symbols = [...targetCode];
+  const usableWidth = Math.max(width - 90, 220);
+  const stepX = symbols.length ? usableWidth / symbols.length : usableWidth;
+  const centerY = height * 0.5;
+  const amp = Math.min(86, Math.max(42, height * 0.22));
+  let y = centerY;
+  const points = [{ x: 44, y: centerY, symbol: "root" }];
+  symbols.forEach((symbol, index) => {
+    const x = 44 + stepX * (index + 1);
+    y += symbol === "." ? -amp / (index + 2) : amp / (index + 2);
+    points.push({ x, y, symbol });
+  });
+  const svg = createSvg("svg", { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none" });
+  for (let i = 0; i < points.length - 1; i += 1) {
+    svg.appendChild(createSvg("line", { x1: points[i].x, y1: points[i].y, x2: points[i + 1].x, y2: points[i + 1].y, class: i < activeCode.length && !wrong ? "done" : "" }));
+  }
+  container.appendChild(svg);
+  const wrongIndex = wrong ? Math.max(0, activeCode.length - 1) : -1;
+  points.forEach((point, index) => {
+    const node = document.createElement("div");
+    node.className = "training-node";
+    if (point.symbol === "root") {
+      node.classList.add("root");
+      node.textContent = "⌁";
+    } else {
+      const symbolIndex = index - 1;
+      node.classList.add(point.symbol === "." ? "dot" : "dash");
+      node.textContent = point.symbol === "." ? "●" : "■";
+      if (symbolIndex < activeCode.length && !wrong) node.classList.add("done");
+      if (symbolIndex === activeCode.length && !wrong) node.classList.add("active");
+      if (symbolIndex === wrongIndex) node.classList.add("wrong");
+    }
+    node.style.left = `${point.x}px`;
+    node.style.top = `${point.y}px`;
+    container.appendChild(node);
+  });
+}
+function renderTrainingCharGrid() {
+  const pool = getTrainingPool();
+  el.trainingCharGrid.innerHTML = "";
+  pool.forEach(char => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `training-char-item${char === state.training.target ? " active" : ""}`;
+    const code = getTrainingParts(char).map(part => toDisplayCode(part.code)).join("/");
+    button.innerHTML = `<span class="char">${char}</span><span class="code">${code}</span>`;
+    button.addEventListener("click", () => {
+      state.training.target = char;
+      state.training.lastTarget = char;
+      state.training.partIndex = 0;
+      state.training.input = "";
+      state.training.wrong = false;
+      setTrainingMessage("選択した文字で練習します。", "");
+      updateTraining();
+    });
+    el.trainingCharGrid.appendChild(button);
+  });
 }
 
 /* Game mode */
