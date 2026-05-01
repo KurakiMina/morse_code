@@ -4,12 +4,17 @@
   --panel-2: #172033;
   --text: #e5eefc;
   --muted: #9fb1cc;
-  --line: #d7e3f4;
-  --dot: #89d5ff;
-  --dash: #ffad5c;
-  --current: #38bdf8;
-  --path: #22c55e;
-  --final: #facc15;
+  --line: #d9e5f5;
+  --dot-stroke: #bfeeff;
+  --dash-stroke: #ffd09c;
+  --dot-fill: #153246;
+  --dash-fill: #3a2818;
+  --path-fill: #2ec468;
+  --path-stroke: #8cf5b4;
+  --current-fill: #38bdf8;
+  --current-stroke: #d8f2ff;
+  --final-fill: #facc15;
+  --final-stroke: #fff1a6;
   --danger: #ef4444;
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
 }
@@ -21,16 +26,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(56, 189, 248, 0.14), transparent 34rem),
-    var(--bg);
+  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 34rem), var(--bg);
   color: var(--text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 button {
@@ -98,8 +96,8 @@ button {
 }
 
 .code-display {
-  font-size: 1.5rem;
-  letter-spacing: 0.12em;
+  font-size: 1.35rem;
+  letter-spacing: 0.16em;
 }
 
 .letter-display {
@@ -134,7 +132,7 @@ button {
 .time-bar {
   width: 0%;
   height: 100%;
-  background: linear-gradient(90deg, var(--dot), var(--dash));
+  background: linear-gradient(90deg, #71d6ff, #ffa34f);
   transition: width 40ms linear;
 }
 
@@ -144,7 +142,7 @@ button {
   bottom: -4px;
   left: 40%;
   width: 2px;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .legend-panel {
@@ -170,34 +168,34 @@ button {
 
 .shape-swatch.dot {
   border-radius: 999px;
-  background: var(--dot);
+  background: #71d6ff;
 }
 
 .shape-swatch.dash {
   border-radius: 4px;
-  background: var(--dash);
+  background: #ffa34f;
 }
 
 .legend-chip {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: 5px;
+}
+
+.legend-chip.path {
+  background: rgba(46, 196, 104, 0.25);
+  border: 2px solid var(--path-stroke);
 }
 
 .legend-chip.current {
   background: rgba(56, 189, 248, 0.28);
-  border: 2px solid var(--current);
-}
-
-.legend-chip.path {
-  background: rgba(34, 197, 94, 0.24);
-  border: 2px solid var(--path);
+  border: 2px solid var(--current-stroke);
 }
 
 .legend-chip.final {
-  background: rgba(250, 204, 21, 0.24);
-  border: 2px solid var(--final);
+  background: rgba(250, 204, 21, 0.25);
+  border: 2px solid var(--final-stroke);
 }
 
 .board-panel {
@@ -215,8 +213,7 @@ button {
   min-width: 920px;
   height: auto;
   border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(2, 6, 23, 0.95), rgba(10, 15, 28, 0.95));
+  background: linear-gradient(180deg, #132845 0%, #0a1424 100%);
 }
 
 .board-bg {
@@ -231,80 +228,71 @@ button {
 
 .board-title {
   fill: #dbe8fb;
-  font-size: 28px;
-  font-weight: 500;
+  font-size: 30px;
+  font-weight: 400;
   letter-spacing: 4px;
 }
 
 .board-edge {
   fill: none;
-  stroke: rgba(223, 236, 251, 0.85);
+  stroke: rgba(223, 236, 251, 0.88);
   stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .board-edge.path {
-  stroke: var(--path);
-  stroke-width: 5;
-}
-
-.board-node-shape {
-  fill: rgba(15, 23, 42, 0.96);
-  stroke: #dce6f4;
-  stroke-width: 3;
-}
-
-.board-node.dot .board-node-shape {
-  fill: rgba(56, 189, 248, 0.08);
-}
-
-.board-node.dash .board-node-shape {
-  fill: rgba(251, 146, 60, 0.08);
-}
-
-.board-node.root .board-node-shape,
-.board-node.root .antenna-line {
-  stroke: var(--dot);
-}
-
-.board-node.root .board-node-shape {
-  fill: rgba(56, 189, 248, 0.12);
-}
-
-.board-node.path .board-node-shape {
-  stroke: var(--path);
-  fill: rgba(34, 197, 94, 0.16);
-}
-
-.board-node.active .board-node-shape {
-  stroke: var(--current);
-  fill: rgba(56, 189, 248, 0.22);
-}
-
-.board-node.final .board-node-shape {
-  stroke: var(--final);
-  fill: rgba(250, 204, 21, 0.2);
+  stroke: var(--path-stroke);
+  stroke-width: 6;
 }
 
 .board-node-label {
-  fill: #e5eefc;
-  font-size: 24px;
-  font-weight: 500;
+  fill: #eff6ff;
+  font-size: 22px;
+  font-weight: 400;
   text-anchor: middle;
   dominant-baseline: middle;
-}
-
-.board-node-note {
-  fill: rgba(229, 238, 252, 0.74);
-  font-size: 13px;
-  text-anchor: middle;
 }
 
 .board-node.active .board-node-label,
 .board-node.final .board-node-label,
 .board-node.path .board-node-label {
   fill: #ffffff;
+}
+
+.node-shape {
+  stroke-width: 3;
+}
+
+.board-node.dot .node-shape {
+  fill: var(--dot-fill);
+  stroke: var(--dot-stroke);
+}
+
+.board-node.dash .node-shape {
+  fill: var(--dash-fill);
+  stroke: var(--dash-stroke);
+}
+
+.board-node.root .node-shape,
+.board-node.root .antenna-line {
+  fill: rgba(56, 189, 248, 0.12);
+  stroke: #c9f3ff;
+}
+
+.board-node.path .node-shape {
+  fill: var(--path-fill);
+  stroke: var(--path-stroke);
+}
+
+.board-node.active .node-shape {
+  fill: var(--current-fill);
+  stroke: var(--current-stroke);
+}
+
+.board-node.final .node-shape {
+  fill: var(--final-fill);
+  stroke: var(--final-stroke);
 }
 
 .antenna-line {
@@ -357,7 +345,7 @@ button {
 }
 
 .secondary-button:hover {
-  border-color: var(--current);
+  border-color: #6cd9ff;
 }
 
 .secondary-button.danger {

@@ -11,7 +11,7 @@
   <main class="app">
     <header class="header">
       <h1>モールス信号練習</h1>
-      <p>参考画像に合わせて、線でつながるボード型にしました。●が短押し、■が長押しです。</p>
+      <p>参考画像に寄せたボード型です。●が短押し、■が長押し。通過した丸や四角は塗りつぶされます。</p>
     </header>
 
     <section class="panel status-panel" aria-label="入力状況">
@@ -52,12 +52,12 @@
         <span>長押し</span>
       </div>
       <div class="legend-item">
-        <span class="legend-chip current"></span>
-        <span>現在位置</span>
-      </div>
-      <div class="legend-item">
         <span class="legend-chip path"></span>
         <span>通過済み</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-chip current"></span>
+        <span>現在位置</span>
       </div>
       <div class="legend-item">
         <span class="legend-chip final"></span>
@@ -67,20 +67,18 @@
 
     <section class="panel board-panel" aria-label="モールス信号ボード">
       <div class="board-scroll">
-        <svg id="morseBoard" class="morse-board" viewBox="0 0 960 660" role="img" aria-label="モールス信号ボード"></svg>
+        <svg id="morseBoard" class="morse-board" viewBox="0 0 960 720" role="img" aria-label="モールス信号ボード"></svg>
       </div>
     </section>
 
     <section class="panel control-panel" aria-label="操作">
       <button id="keyButton" class="key-button" type="button">押す</button>
-
       <div class="button-row">
         <button id="spaceButton" class="secondary-button" type="button">スペース</button>
-        <button id="deleteButton" class="secondary-button" type="button">1文字削除</button>
+        <button id="deleteButton" class="secondary-button" type="button">1つ戻る</button>
         <button id="resetButton" class="secondary-button danger" type="button">リセット</button>
       </div>
-
-      <p class="hint">マウス、タッチ、スペースキーで入力できます。入力後、少し待つと文字が確定します。</p>
+      <p class="hint">マウス、タッチ、スペースキーで入力できます。入力後、少し待つと文字が確定します。数字は後で追加予定のため、未対応コードは ? で確定します。</p>
     </section>
   </main>
 </body>
