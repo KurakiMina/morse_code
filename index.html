@@ -167,19 +167,22 @@
         <p>表示された単語をモールス信号で入力してください。序盤は短い単語、正解が続くと長い単語や数字入り単語が出ます。</p>
         <div class="rule-grid">
           <div><span class="label">文字正解</span><strong>+10点</strong></div>
-          <div><span class="label">単語クリア</span><strong>単語長 × 20点</strong></div>
-          <div><span class="label">コンボ</span><strong>連続正解で加点</strong></div>
+          <div><span class="label">単語クリア</span><strong>難易度倍率</strong></div>
+          <div><span class="label">コンボ</span><strong>難易度上昇</strong></div>
           <div><span class="label">ランキング</span><strong>自己ベスト5位</strong></div>
         </div>
         <button id="startGameButton" class="key-button game-start" type="button">スタート</button>
       </section>
 
       <section id="gamePlayPanel" class="panel game-panel hidden">
-        <div class="game-hud">
+        <div id="gameEffectLayer" class="game-effect-layer" aria-live="polite"></div>
+        <div class="game-hud stage2-hud">
           <div class="status-card"><span class="label">残り時間</span><strong id="gameTime">40.0</strong></div>
           <div class="status-card"><span class="label">スコア</span><strong id="gameScore">0</strong></div>
           <div class="status-card"><span class="label">コンボ</span><strong id="gameCombo">0</strong></div>
           <div class="status-card"><span class="label">最大コンボ</span><strong id="gameMaxCombo">0</strong></div>
+          <div class="status-card"><span class="label">難易度</span><strong id="gameLevel">Lv.1</strong></div>
+          <div class="status-card"><span class="label">称号</span><strong id="gameTitle">Beginner</strong></div>
         </div>
 
         <div class="game-timer-track">
@@ -189,7 +192,10 @@
         <div class="game-main-layout">
           <div class="game-left">
             <div class="game-word-wrap">
-              <span class="label">出題単語</span>
+              <div class="game-word-head">
+                <span class="label">出題単語</span>
+                <span id="gameDifficultyBadge" class="difficulty-badge">Easy</span>
+              </div>
               <strong id="gameWord" class="game-word">-</strong>
               <div id="gameWordProgress" class="game-word-progress"></div>
             </div>
@@ -227,6 +233,8 @@
           <div><span class="label">正解単語</span><strong id="resultWords">0</strong></div>
           <div><span class="label">正解文字</span><strong id="resultChars">0</strong></div>
           <div><span class="label">最大コンボ</span><strong id="resultMaxCombo">0</strong></div>
+          <div><span class="label">到達難易度</span><strong id="resultLevel">Lv.1</strong></div>
+          <div><span class="label">称号</span><strong id="resultTitle">Beginner</strong></div>
         </div>
         <p id="resultWeakLetters" class="hint">苦手文字：なし</p>
         <div class="button-row">

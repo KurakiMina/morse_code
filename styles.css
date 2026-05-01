@@ -790,3 +790,120 @@ button {
     width: 100%;
   }
 }
+
+
+/* Stage 2 additions */
+.stage2-hud {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.game-effect-layer {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.game-effect {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: rgba(46, 196, 104, 0.18);
+  border: 1px solid rgba(140, 245, 180, 0.78);
+  color: #dcfce7;
+  font-weight: 900;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.28);
+  animation: effectPop 1s ease forwards;
+  white-space: nowrap;
+}
+
+.game-effect.bad {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(254, 202, 202, 0.72);
+  color: #fee2e2;
+}
+
+.game-effect.level {
+  background: rgba(250, 204, 21, 0.20);
+  border-color: rgba(255, 241, 166, 0.85);
+  color: #fef3c7;
+}
+
+@keyframes effectPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.94);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.04);
+  }
+  75% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(0.98);
+  }
+}
+
+.game-word-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.difficulty-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.48);
+  color: #d8f2ff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.game-word-wrap.combo-pulse,
+.game-current.combo-pulse,
+.status-card.combo-pulse {
+  animation: comboPulse 0.35s ease;
+}
+
+@keyframes comboPulse {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.025); }
+  100% { transform: scale(1); }
+}
+
+.game-current p.good {
+  text-shadow: 0 0 18px rgba(140, 245, 180, 0.28);
+}
+
+.game-current p.bad {
+  text-shadow: 0 0 18px rgba(254, 202, 202, 0.24);
+}
+
+.input-expire {
+  animation: expireShake 0.35s ease;
+}
+
+@keyframes expireShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@media (max-width: 900px) {
+  .stage2-hud {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

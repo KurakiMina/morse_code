@@ -2,6 +2,24 @@ const NS = "http://www.w3.org/2000/svg";
 const LONG_PRESS_MS = 300;
 const GAME_SECONDS = 40;
 const RANKING_KEY = "morseClassicGameRanking";
+const INPUT_MAX_LENGTH = 5;
+const INPUT_EXPIRE_MS = 1000;
+
+const DIFFICULTY_META = {
+  easy: { label: "Easy", multiplier: 1.0, level: 1 },
+  normal: { label: "Normal", multiplier: 1.2, level: 2 },
+  hard: { label: "Hard", multiplier: 1.5, level: 3 },
+  expert: { label: "Expert", multiplier: 2.0, level: 4 },
+  master: { label: "Master", multiplier: 2.6, level: 5 }
+};
+
+const TITLES = [
+  { min: 0, title: "Beginner" },
+  { min: 500, title: "Operator" },
+  { min: 1000, title: "Signal Master" },
+  { min: 1800, title: "Morse Ace" },
+  { min: 2800, title: "Chief Operator" }
+];
 
 const MORSE = {
   A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.", G: "--.",
@@ -14,10 +32,11 @@ const MORSE = {
 const CODE_TO_CHAR = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
 
 const WORDS = {
-  easy: ["IT", "ON", "GO", "UP", "NO", "CAT", "DOG", "SUN"],
-  normal: ["CODE", "WAVE", "RADIO", "LIGHT", "TRAIN", "MOON"],
-  hard: ["MORSE", "SIGNAL", "BEACON", "STATION", "PLANET"],
-  expert: ["TELEGRAM", "WIRELESS", "SIGNAL7", "RADIO5", "BEACON9"]
+  easy: ["IT", "ON", "GO", "UP", "NO", "CAT", "DOG", "SUN", "SKY", "SEA"],
+  normal: ["CODE", "WAVE", "RADIO", "LIGHT", "TRAIN", "MOON", "ALERT", "BEAM", "STAR"],
+  hard: ["MORSE", "SIGNAL", "BEACON", "STATION", "PLANET", "ROCKET", "VECTOR", "ORBIT"],
+  expert: ["TELEGRAM", "WIRELESS", "OPERATOR", "SIGNAL7", "RADIO5", "BEACON9", "STATION4", "VECTOR8"],
+  master: ["TRANSMISSION", "COMMUNICATION", "NAVIGATION7", "FREQUENCY5", "SATELLITE9", "OBSERVATORY2"]
 };
 
 /* Classic board coordinates: kept for the accepted classic UI. */
@@ -78,10 +97,12 @@ const state = {
   screen: "mode",
   code: "",
   output: "",
+  classicExpireTimer: null,
   meterRaf: null,
   practice: {
     code: "",
-    output: ""
+    output: "",
+    expireTimer: null
   },
   soundEnabled: true,
   audioContext: null,
@@ -107,8 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "startGameButton", "playAgainButton", "backToGameIntroButton",
     "gameKeyButton", "gameHoldBar", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
     "gameTime", "gameTimerBar", "gameScore", "gameCombo", "gameMaxCombo",
+    "gameLevel", "gameTitle", "gameDifficultyBadge", "gameEffectLayer",
     "gameWord", "gameWordProgress", "gameCurrentLetter", "gameCurrentCode", "gameMessage", "gameBoard",
-    "resultScore", "resultWords", "resultChars", "resultMaxCombo", "resultWeakLetters",
+    "resultScore", "resultWords", "resultChars", "resultMaxCombo", "resultLevel", "resultTitle", "resultWeakLetters",
     "rankingList"
   ].forEach(id => el[id] = document.getElementById(id));
 
@@ -365,21 +387,30 @@ function handleKeyboard(event) {
 /* Classic mode behavior: kept consistent with the accepted version. */
 function addClassicSymbol(symbol) {
   ensureAudioContext();
-  if (state.code.length >= 5) {
+  if (state.code.length >= INPUT_MAX_LENGTH + 1) {
+    scheduleClassicExpire();
     playSe("miss");
     return;
   }
+
   state.code += symbol;
   updateClassic();
+
+  if (state.code.length > INPUT_MAX_LENGTH) {
+    scheduleClassicExpire();
+    playSe("miss");
+  }
 }
 
 function deleteClassic() {
+  clearClassicExpire();
   state.code = state.code.slice(0, -1);
   playSe("delete");
   updateClassic();
 }
 
 function resetClassic() {
+  clearClassicExpire();
   state.code = "";
   state.output = "";
   playSe("reset");
@@ -388,10 +419,28 @@ function resetClassic() {
 
 function confirmClassic() {
   if (!state.code) return;
+  clearClassicExpire();
   state.output += CODE_TO_CHAR[state.code] || "?";
   playSe(CODE_TO_CHAR[state.code] ? "confirm" : "miss");
   state.code = "";
   updateClassic();
+}
+
+function scheduleClassicExpire() {
+  clearClassicExpire();
+  state.classicExpireTimer = setTimeout(() => {
+    state.code = "";
+    playSe("reset");
+    updateClassic();
+    flashElement(el.currentCode);
+  }, INPUT_EXPIRE_MS);
+}
+
+function clearClassicExpire() {
+  if (state.classicExpireTimer) {
+    clearTimeout(state.classicExpireTimer);
+    state.classicExpireTimer = null;
+  }
 }
 
 function updateClassic() {
@@ -408,21 +457,30 @@ function renderClassicBoard() {
 /* Practice mode */
 function addPracticeSymbol(symbol) {
   ensureAudioContext();
-  if (state.practice.code.length >= 5) {
+  if (state.practice.code.length >= INPUT_MAX_LENGTH + 1) {
+    schedulePracticeExpire();
     playSe("miss");
     return;
   }
+
   state.practice.code += symbol;
   updatePractice();
+
+  if (state.practice.code.length > INPUT_MAX_LENGTH) {
+    schedulePracticeExpire();
+    playSe("miss");
+  }
 }
 
 function deletePractice() {
+  clearPracticeExpire();
   state.practice.code = state.practice.code.slice(0, -1);
   playSe("delete");
   updatePractice();
 }
 
 function resetPractice() {
+  clearPracticeExpire();
   state.practice.code = "";
   state.practice.output = "";
   playSe("reset");
@@ -431,10 +489,28 @@ function resetPractice() {
 
 function confirmPractice() {
   if (!state.practice.code) return;
+  clearPracticeExpire();
   state.practice.output += CODE_TO_CHAR[state.practice.code] || "?";
   playSe(CODE_TO_CHAR[state.practice.code] ? "confirm" : "miss");
   state.practice.code = "";
   updatePractice();
+}
+
+function schedulePracticeExpire() {
+  clearPracticeExpire();
+  state.practice.expireTimer = setTimeout(() => {
+    state.practice.code = "";
+    playSe("reset");
+    updatePractice();
+    flashElement(el.practiceCurrentCode);
+  }, INPUT_EXPIRE_MS);
+}
+
+function clearPracticeExpire() {
+  if (state.practice.expireTimer) {
+    clearTimeout(state.practice.expireTimer);
+    state.practice.expireTimer = null;
+  }
 }
 
 function updatePractice() {
@@ -559,6 +635,13 @@ function toDisplayCode(code) {
   return code.replaceAll(".", "●").replaceAll("-", "■");
 }
 
+function flashElement(target) {
+  if (!target) return;
+  target.classList.remove("input-expire");
+  void target.offsetWidth;
+  target.classList.add("input-expire");
+}
+
 /* Game mode */
 function showGameIntro() {
   stopGame();
@@ -582,13 +665,18 @@ function startGame() {
     input: "",
     words: 0,
     chars: 0,
-    misses: {}
+    misses: {},
+    difficulty: "easy",
+    level: 1,
+    title: "Beginner",
+    highestLevel: 1
   };
 
   el.gameIntroPanel.classList.add("hidden");
   el.gameResultPanel.classList.add("hidden");
   el.gamePlayPanel.classList.remove("hidden");
 
+  if (el.gameEffectLayer) el.gameEffectLayer.innerHTML = "";
   nextWord();
   el.gameMessage.textContent = "入力してください。";
   el.gameMessage.className = "";
@@ -635,18 +723,36 @@ function checkGameInput(fromSpace) {
     game.chars += 1;
     game.index += 1;
     game.input = "";
+    game.level = calculateLevel(game.combo, game.words);
+    game.highestLevel = Math.max(game.highestLevel, game.level);
+    game.title = calculateTitle(game.score, game.maxCombo);
+
     playSe("correct");
     setGameMessage(`正解：${target} +${gained}`, "good");
+    showEffect(`+${gained} / ${game.combo} COMBO`, "good");
+    pulseGameUi();
 
     if (game.index >= game.word.length) {
-      const bonus = game.word.length * 20 + Math.max(0, game.combo - 1) * 5;
+      const difficulty = game.difficulty;
+      const meta = DIFFICULTY_META[difficulty];
+      const baseBonus = game.word.length * 20;
+      const difficultyBonus = Math.round(baseBonus * meta.multiplier);
+      const comboBonus = Math.max(0, game.combo - 1) * 5;
+      const bonus = difficultyBonus + comboBonus;
+
       game.words += 1;
       game.score += bonus;
+      game.level = calculateLevel(game.combo, game.words);
+      game.highestLevel = Math.max(game.highestLevel, game.level);
+      game.title = calculateTitle(game.score, game.maxCombo);
+
       playSe("word");
       setGameMessage(`単語クリア +${bonus}`, "good");
+      showEffect(`${meta.label} CLEAR +${bonus}`, "level");
+
       setTimeout(() => {
         if (state.game) nextWord();
-      }, 280);
+      }, 360);
     }
   } else if (
     fromSpace ||
@@ -656,22 +762,25 @@ function checkGameInput(fromSpace) {
     game.combo = 0;
     game.misses[target] = (game.misses[target] || 0) + 1;
     game.input = "";
+    game.level = calculateLevel(game.combo, game.words);
+    game.title = calculateTitle(game.score, game.maxCombo);
+
     playSe("miss");
     setGameMessage(`ミス：${target} は ${toDisplayCode(expected)}`, "bad");
+    showEffect("COMBO RESET", "bad");
   }
 
   updateGame();
 }
 
-function setGameMessage(message, kind) {
-  el.gameMessage.textContent = message;
-  el.gameMessage.className = kind || "";
-}
-
 function nextWord() {
   const game = state.game;
-  const level = game.words >= 8 ? "expert" : game.words >= 5 ? "hard" : game.words >= 2 ? "normal" : "easy";
-  const pool = WORDS[level];
+  const level = calculateLevel(game.combo, game.words);
+  game.level = level;
+  game.highestLevel = Math.max(game.highestLevel, level);
+  game.difficulty = difficultyForLevel(level);
+
+  const pool = WORDS[game.difficulty];
   let word = pool[Math.floor(Math.random() * pool.length)];
   while (pool.length > 1 && word === game.word) {
     word = pool[Math.floor(Math.random() * pool.length)];
@@ -680,6 +789,32 @@ function nextWord() {
   game.index = 0;
   game.input = "";
   updateGame();
+}
+
+function calculateLevel(combo, words) {
+  if (combo >= 28 || words >= 10) return 5;
+  if (combo >= 18 || words >= 7) return 4;
+  if (combo >= 10 || words >= 4) return 3;
+  if (combo >= 4 || words >= 2) return 2;
+  return 1;
+}
+
+function difficultyForLevel(level) {
+  if (level >= 5) return "master";
+  if (level >= 4) return "expert";
+  if (level >= 3) return "hard";
+  if (level >= 2) return "normal";
+  return "easy";
+}
+
+function calculateTitle(score, maxCombo) {
+  let title = TITLES[0].title;
+  for (const item of TITLES) {
+    if (score >= item.min) title = item.title;
+  }
+  if (maxCombo >= 35) title = "Morse Ace";
+  if (maxCombo >= 50) title = "Chief Operator";
+  return title;
 }
 
 function tickGame() {
@@ -705,6 +840,9 @@ function updateGame() {
   el.gameScore.textContent = game.score;
   el.gameCombo.textContent = game.combo;
   el.gameMaxCombo.textContent = game.maxCombo;
+  el.gameLevel.textContent = `Lv.${game.level}`;
+  el.gameTitle.textContent = game.title;
+  el.gameDifficultyBadge.textContent = DIFFICULTY_META[game.difficulty].label;
   el.gameWord.textContent = game.word;
   el.gameCurrentLetter.textContent = game.word[game.index] || "-";
   el.gameCurrentCode.textContent = game.input ? toDisplayCode(game.input) : "未入力";
@@ -732,6 +870,8 @@ function endGame() {
     words: game.words,
     chars: game.chars,
     maxCombo: game.maxCombo,
+    level: game.highestLevel,
+    title: calculateTitle(game.score, game.maxCombo),
     misses: { ...game.misses },
     date: new Date().toLocaleDateString("ja-JP")
   };
@@ -746,11 +886,35 @@ function endGame() {
   renderRanking();
 }
 
+function showEffect(text, kind = "good") {
+  if (!el.gameEffectLayer) return;
+  const item = document.createElement("div");
+  item.className = `game-effect ${kind}`;
+  item.textContent = text;
+  el.gameEffectLayer.appendChild(item);
+  setTimeout(() => item.remove(), 1100);
+}
+
+function pulseGameUi() {
+  const targets = [
+    document.querySelector(".game-word-wrap"),
+    document.querySelector(".game-current")
+  ].filter(Boolean);
+
+  targets.forEach(target => {
+    target.classList.remove("combo-pulse");
+    void target.offsetWidth;
+    target.classList.add("combo-pulse");
+  });
+}
+
 function renderResult(record) {
   el.resultScore.textContent = record.score;
   el.resultWords.textContent = record.words;
   el.resultChars.textContent = record.chars;
   el.resultMaxCombo.textContent = record.maxCombo;
+  el.resultLevel.textContent = `Lv.${record.level || 1}`;
+  el.resultTitle.textContent = record.title || calculateTitle(record.score, record.maxCombo || 0);
 
   const weak = Object.entries(record.misses)
     .sort((a, b) => b[1] - a[1])
@@ -787,7 +951,7 @@ function renderRanking() {
   }
   ranking.forEach(item => {
     const li = document.createElement("li");
-    li.textContent = `${item.score}点 / ${item.words}語 / 最大${item.maxCombo}コンボ / ${item.date}`;
+    li.textContent = `${item.score}点 / ${item.words}語 / 最大${item.maxCombo}コンボ / ${item.title || "Beginner"} / ${item.date}`;
     el.rankingList.appendChild(li);
   });
 }
