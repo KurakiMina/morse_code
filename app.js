@@ -83,6 +83,8 @@ const state = {
     code: "",
     output: ""
   },
+  soundEnabled: true,
+  audioContext: null,
   game: null
 };
 
@@ -91,6 +93,7 @@ const el = {};
 document.addEventListener("DOMContentLoaded", () => {
   [
     "modeScreen", "classicScreen", "practiceScreen", "gameScreen",
+    "soundToggleButton",
     "classicModeButton", "practiceModeButton", "gameModeButton",
     "classicBackButton", "practiceBackButton", "gameBackButton",
 
@@ -98,11 +101,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "keyButton", "spaceButton", "deleteButton", "resetButton",
 
     "practiceCurrentCode", "practiceCurrentLetter", "practiceOutputText", "practiceBoard",
-    "practiceKeyButton", "practiceSpaceButton", "practiceDeleteButton", "practiceResetButton",
+    "practiceKeyButton", "practiceHoldBar", "practiceSpaceButton", "practiceDeleteButton", "practiceResetButton",
 
     "gameIntroPanel", "gamePlayPanel", "gameResultPanel",
     "startGameButton", "playAgainButton", "backToGameIntroButton",
-    "gameKeyButton", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
+    "gameKeyButton", "gameHoldBar", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
     "gameTime", "gameTimerBar", "gameScore", "gameCombo", "gameMaxCombo",
     "gameWord", "gameWordProgress", "gameCurrentLetter", "gameCurrentCode", "gameMessage", "gameBoard",
     "resultScore", "resultWords", "resultChars", "resultMaxCombo", "resultWeakLetters",
@@ -112,6 +115,8 @@ document.addEventListener("DOMContentLoaded", () => {
   el.classicModeButton.addEventListener("click", () => showScreen("classic"));
   el.practiceModeButton.addEventListener("click", () => showScreen("practice"));
   el.gameModeButton.addEventListener("click", () => showScreen("game"));
+
+  setupSoundToggles();
 
   el.classicBackButton.addEventListener("click", () => showScreen("mode"));
   el.practiceBackButton.addEventListener("click", () => showScreen("mode"));
@@ -125,12 +130,12 @@ document.addEventListener("DOMContentLoaded", () => {
   el.deleteButton.addEventListener("click", deleteClassic);
   el.resetButton.addEventListener("click", resetClassic);
 
-  setupPressButton(el.practiceKeyButton, addPracticeSymbol, null);
+  setupPressButton(el.practiceKeyButton, addPracticeSymbol, null, el.practiceHoldBar, true);
   el.practiceSpaceButton.addEventListener("click", confirmPractice);
   el.practiceDeleteButton.addEventListener("click", deletePractice);
   el.practiceResetButton.addEventListener("click", resetPractice);
 
-  setupPressButton(el.gameKeyButton, addGameSymbol, null);
+  setupPressButton(el.gameKeyButton, addGameSymbol, null, el.gameHoldBar, true);
   el.gameSpaceButton.addEventListener("click", () => addGameSymbol("space"));
   el.gameDeleteButton.addEventListener("click", deleteGameInput);
   el.gameQuitButton.addEventListener("click", endGame);
@@ -168,9 +173,28 @@ function showScreen(screen) {
   }
 }
 
-function setupPressButton(button, callback, meter) {
+function setupPressButton(button, callback, meter, buttonBar = null, enableSe = false) {
   let startAt = 0;
-  let active = FalseValue();
+  let active = false;
+  let holdRaf = null;
+
+  const resetButtonBar = () => {
+    if (holdRaf) cancelAnimationFrame(holdRaf);
+    if (buttonBar) {
+      buttonBar.style.height = "0%";
+      button.classList.remove("short-ready", "long-ready");
+    }
+  };
+
+  const updateButtonBar = () => {
+    if (!buttonBar || !active) return;
+    const elapsed = performance.now() - startAt;
+    const pct = Math.min(100, elapsed / LONG_PRESS_MS * 100);
+    buttonBar.style.height = `${pct}%`;
+    button.classList.toggle("short-ready", elapsed < LONG_PRESS_MS);
+    button.classList.toggle("long-ready", elapsed >= LONG_PRESS_MS);
+    holdRaf = requestAnimationFrame(updateButtonBar);
+  };
 
   const start = event => {
     event.preventDefault();
@@ -178,6 +202,8 @@ function setupPressButton(button, callback, meter) {
     startAt = performance.now();
     button.classList.add("pressing");
     if (meter) updateMeter(meter, startAt);
+    updateButtonBar();
+    if (enableSe) playSe("press");
   };
 
   const finish = event => {
@@ -187,8 +213,12 @@ function setupPressButton(button, callback, meter) {
     button.classList.remove("pressing");
     if (state.meterRaf) cancelAnimationFrame(state.meterRaf);
     if (meter) meter.style.width = "0%";
+
     const elapsed = performance.now() - startAt;
-    callback(elapsed >= LONG_PRESS_MS ? "-" : ".");
+    const symbol = elapsed >= LONG_PRESS_MS ? "-" : ".";
+    resetButtonBar();
+    if (enableSe) playSe(symbol === "." ? "dot" : "dash");
+    callback(symbol);
   };
 
   button.addEventListener("pointerdown", start);
@@ -197,15 +227,99 @@ function setupPressButton(button, callback, meter) {
   button.addEventListener("pointercancel", finish);
 }
 
-function FalseValue() {
-  return false;
-}
-
 function updateMeter(meter, startAt) {
   const elapsed = performance.now() - startAt;
   const pct = Math.min(100, elapsed / LONG_PRESS_MS * 100);
   meter.style.width = `${pct}%`;
   state.meterRaf = requestAnimationFrame(() => updateMeter(meter, startAt));
+}
+
+function setupSoundToggles() {
+  const toggles = Array.from(document.querySelectorAll("[data-sound-toggle]"));
+  if (el.soundToggleButton) toggles.unshift(el.soundToggleButton);
+
+  const sync = () => {
+    toggles.forEach(button => {
+      button.textContent = state.soundEnabled ? "音声 ON" : "音声 OFF";
+      button.setAttribute("aria-pressed", String(state.soundEnabled));
+    });
+  };
+
+  toggles.forEach(button => {
+    button.addEventListener("click", async () => {
+      state.soundEnabled = !state.soundEnabled;
+      if (state.soundEnabled) {
+        await ensureAudioContext();
+        playSe("toggle");
+      }
+      sync();
+    });
+  });
+
+  sync();
+}
+
+async function ensureAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+
+  if (!state.audioContext) {
+    state.audioContext = new AudioContextClass();
+  }
+
+  if (state.audioContext.state === "suspended") {
+    try {
+      await state.audioContext.resume();
+    } catch {
+      return null;
+    }
+  }
+
+  return state.audioContext;
+}
+
+function playSe(type) {
+  if (!state.soundEnabled) return;
+
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  if (!state.audioContext) {
+    state.audioContext = new AudioContextClass();
+  }
+
+  const ctx = state.audioContext;
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
+
+  const now = ctx.currentTime;
+  const gain = ctx.createGain();
+  const osc = ctx.createOscillator();
+
+  const preset = {
+    press: { freq: 220, duration: 0.035, gain: 0.025, type: "sine" },
+    dot: { freq: 760, duration: 0.07, gain: 0.055, type: "sine" },
+    dash: { freq: 520, duration: 0.13, gain: 0.058, type: "sine" },
+    confirm: { freq: 900, duration: 0.08, gain: 0.06, type: "triangle" },
+    correct: { freq: 1040, duration: 0.09, gain: 0.065, type: "triangle" },
+    word: { freq: 1240, duration: 0.11, gain: 0.065, type: "triangle" },
+    miss: { freq: 180, duration: 0.17, gain: 0.065, type: "sawtooth" },
+    delete: { freq: 340, duration: 0.06, gain: 0.045, type: "sine" },
+    reset: { freq: 260, duration: 0.09, gain: 0.05, type: "sine" },
+    toggle: { freq: 680, duration: 0.08, gain: 0.045, type: "sine" }
+  }[type] || { freq: 500, duration: 0.08, gain: 0.04, type: "sine" };
+
+  osc.type = preset.type;
+  osc.frequency.setValueAtTime(preset.freq, now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(preset.gain, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + preset.duration + 0.02);
 }
 
 function handleKeyboard(event) {
@@ -278,25 +392,32 @@ function renderClassicBoard() {
 
 /* Practice mode */
 function addPracticeSymbol(symbol) {
-  if (state.practice.code.length >= 5) return;
+  ensureAudioContext();
+  if (state.practice.code.length >= 5) {
+    playSe("miss");
+    return;
+  }
   state.practice.code += symbol;
   updatePractice();
 }
 
 function deletePractice() {
   state.practice.code = state.practice.code.slice(0, -1);
+  playSe("delete");
   updatePractice();
 }
 
 function resetPractice() {
   state.practice.code = "";
   state.practice.output = "";
+  playSe("reset");
   updatePractice();
 }
 
 function confirmPractice() {
   if (!state.practice.code) return;
   state.practice.output += CODE_TO_CHAR[state.practice.code] || "?";
+  playSe(CODE_TO_CHAR[state.practice.code] ? "confirm" : "miss");
   state.practice.code = "";
   updatePractice();
 }
@@ -433,6 +554,7 @@ function showGameIntro() {
 }
 
 function startGame() {
+  ensureAudioContext();
   stopGame();
   state.game = {
     startedAt: performance.now(),
@@ -464,6 +586,7 @@ function stopGame() {
 }
 
 function addGameSymbol(symbol) {
+  ensureAudioContext();
   const game = state.game;
   if (!game) return;
 
@@ -480,6 +603,7 @@ function addGameSymbol(symbol) {
 function deleteGameInput() {
   if (!state.game) return;
   state.game.input = state.game.input.slice(0, -1);
+  playSe("delete");
   updateGame();
 }
 
@@ -496,12 +620,14 @@ function checkGameInput(fromSpace) {
     game.chars += 1;
     game.index += 1;
     game.input = "";
+    playSe("correct");
     setGameMessage(`正解：${target} +${gained}`, "good");
 
     if (game.index >= game.word.length) {
       const bonus = game.word.length * 20 + Math.max(0, game.combo - 1) * 5;
       game.words += 1;
       game.score += bonus;
+      playSe("word");
       setGameMessage(`単語クリア +${bonus}`, "good");
       setTimeout(() => {
         if (state.game) nextWord();
@@ -515,6 +641,7 @@ function checkGameInput(fromSpace) {
     game.combo = 0;
     game.misses[target] = (game.misses[target] || 0) + 1;
     game.input = "";
+    playSe("miss");
     setGameMessage(`ミス：${target} は ${toDisplayCode(expected)}`, "bad");
   }
 

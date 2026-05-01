@@ -703,3 +703,90 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Practice/Game-only additions: hold meter in button + sound controls.
+   Classic screen markup and board CSS are unchanged. */
+.header.with-back {
+  grid-template-columns: auto 1fr auto;
+}
+
+.sound-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.sound-toggle {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sound-toggle[aria-pressed="true"] {
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+.sound-toggle[aria-pressed="false"] {
+  color: var(--muted);
+  opacity: 0.82;
+}
+
+.sound-toggle.compact {
+  align-self: start;
+}
+
+.hold-key-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.key-button-label {
+  position: relative;
+  z-index: 2;
+}
+
+.key-hold-bar {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 0 0;
+  height: 0%;
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.56), rgba(239, 68, 68, 0.5));
+  transition: height 35ms linear;
+  pointer-events: none;
+}
+
+.hold-key-button.long-ready .key-hold-bar {
+  background: linear-gradient(180deg, rgba(250, 204, 21, 0.65), rgba(239, 68, 68, 0.62));
+}
+
+.hold-key-button.short-ready .key-hold-bar {
+  background: linear-gradient(180deg, rgba(113, 214, 255, 0.54), rgba(56, 189, 248, 0.5));
+}
+
+.hold-key-button.pressing {
+  filter: brightness(1.08);
+}
+
+@media (max-width: 760px) {
+  .header.with-back {
+    grid-template-columns: 1fr;
+  }
+
+  .sound-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sound-toggle.compact {
+    width: 100%;
+  }
+}

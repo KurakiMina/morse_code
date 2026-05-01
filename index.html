@@ -20,6 +20,11 @@
         <button id="practiceModeButton" class="mode-button" type="button">練習モード</button>
         <button id="gameModeButton" class="mode-button accent" type="button">ゲームモード</button>
       </section>
+
+      <section class="panel sound-panel" aria-label="音声設定">
+        <button id="soundToggleButton" class="sound-toggle" type="button" aria-pressed="true">音声 ON</button>
+        <span>練習モード・ゲームモードの入力音と正誤SEを切り替えます。</span>
+      </section>
     </section>
 
     <section id="classicScreen" class="screen hidden">
@@ -107,6 +112,7 @@
           <h1>練習モード</h1>
           <p>現在の入力、判定文字、確定済み文字を確認しながら練習できます。クラシックモードは変更していません。</p>
         </div>
+        <button class="sound-toggle compact" data-sound-toggle type="button" aria-pressed="true">音声 ON</button>
       </header>
 
       <section class="panel practice-layout" aria-label="練習モード">
@@ -127,7 +133,10 @@
           </div>
 
           <div class="practice-control-card">
-            <button id="practiceKeyButton" class="key-button" type="button">押す</button>
+            <button id="practiceKeyButton" class="key-button hold-key-button" type="button">
+              <span class="key-button-label">押す</span>
+              <span id="practiceHoldBar" class="key-hold-bar" aria-hidden="true"></span>
+            </button>
             <div class="button-row">
               <button id="practiceSpaceButton" class="secondary-button" type="button">スペース</button>
               <button id="practiceDeleteButton" class="secondary-button" type="button">1つ戻る</button>
@@ -150,6 +159,7 @@
           <h1>ゲームモード</h1>
           <p>40秒以内に単語を1文字ずつ入力します。ミスしても減点なし、コンボのみリセットされます。</p>
         </div>
+        <button class="sound-toggle compact" data-sound-toggle type="button" aria-pressed="true">音声 ON</button>
       </header>
 
       <section id="gameIntroPanel" class="panel game-intro-panel">
@@ -192,7 +202,10 @@
               <strong id="gameCurrentCode" class="code-display">未入力</strong>
             </div>
 
-            <button id="gameKeyButton" class="key-button" type="button">押す</button>
+            <button id="gameKeyButton" class="key-button hold-key-button" type="button">
+              <span class="key-button-label">押す</span>
+              <span id="gameHoldBar" class="key-hold-bar" aria-hidden="true"></span>
+            </button>
 
             <div class="button-row">
               <button id="gameSpaceButton" class="secondary-button" type="button">スペース</button>
