@@ -87,6 +87,7 @@ function buildMorseTree() {
 
 function getGridColumn(code) {
   let index = 0;
+
   for (const symbol of code) {
     index = index * 2 + (symbol === "." ? 0 : 1);
   }
@@ -94,6 +95,7 @@ function getGridColumn(code) {
   const depth = code.length;
   const slots = 2 ** depth;
   const span = 32 / slots;
+
   return Math.round(index * span + span / 2);
 }
 
@@ -291,7 +293,7 @@ function flashInvalid() {
 }
 
 function updateDisplay() {
-  currentCodeEl.textContent = currentCode || "–¢“ü—Í";
+  currentCodeEl.textContent = currentCode || "æœªå…¥åŠ›";
   currentLetterEl.textContent = currentCode ? (MORSE_TABLE[currentCode] || "?") : "-";
   outputTextEl.textContent = outputText || "-";
 }
@@ -330,8 +332,11 @@ function updateTreeState(isFinal) {
 }
 
 function scrollNodeIntoView(node) {
+  const scrollParent = treeEl.parentElement;
+  if (!scrollParent) return;
+
   const nodeRect = node.getBoundingClientRect();
-  const scrollRect = treeEl.parentElement.getBoundingClientRect();
+  const scrollRect = scrollParent.getBoundingClientRect();
 
   const isLeftOut = nodeRect.left < scrollRect.left;
   const isRightOut = nodeRect.right > scrollRect.right;
