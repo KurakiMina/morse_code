@@ -9,76 +9,138 @@
 </head>
 <body>
   <main class="app">
-    <header class="header">
-      <h1>モールス信号練習</h1>
-      <p>参考画像に寄せたボード型です。●が短押し、■が長押し。通過した丸や四角は塗りつぶされ、数字も追加済みです。</p>
-    </header>
+    <section id="modeScreen" class="mode-screen">
+      <header class="header">
+        <h1>モールス信号練習</h1>
+        <p>クラシックモードは、提示いただいた参考画像・旧コードのボード型UIを復元したものです。</p>
+      </header>
 
-    <section class="panel status-panel" aria-label="入力状況">
-      <div class="status-grid">
-        <div class="status-card">
-          <span class="label">現在の入力</span>
-          <strong id="currentCode" class="code-display">未入力</strong>
-        </div>
-        <div class="status-card">
-          <span class="label">判定文字</span>
-          <strong id="currentLetter" class="letter-display">-</strong>
-        </div>
-        <div class="status-card">
-          <span class="label">確定済み</span>
-          <strong id="outputText" class="output-display">-</strong>
-        </div>
-      </div>
-
-      <div class="time-meter-wrap">
-        <div class="time-meter-labels">
-          <span>● 短押し</span>
-          <span>■ 長押し</span>
-        </div>
-        <div class="time-meter">
-          <div id="timeBar" class="time-bar"></div>
-          <div class="threshold-line" aria-hidden="true"></div>
-        </div>
-      </div>
+      <section class="panel mode-panel" aria-label="モード選択">
+        <button id="classicModeButton" class="mode-button primary" type="button">クラシックモード</button>
+        <button id="gameModeButton" class="mode-button accent" type="button">ゲームモード</button>
+      </section>
     </section>
 
-    <section class="panel legend-panel" aria-label="記号説明">
-      <div class="legend-item">
-        <span class="shape-swatch dot" aria-hidden="true"></span>
-        <span>短押し</span>
-      </div>
-      <div class="legend-item">
-        <span class="shape-swatch dash" aria-hidden="true"></span>
-        <span>長押し</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-chip path"></span>
-        <span>通過済み</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-chip current"></span>
-        <span>現在位置</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-chip final"></span>
-        <span>確定位置</span>
-      </div>
+    <section id="classicScreen" class="screen hidden">
+      <header class="header with-back">
+        <button id="classicBackButton" class="back-button" type="button">← 戻る</button>
+        <div>
+          <h1>モールス信号練習</h1>
+          <p>参考画像に寄せたボード型です。●が短押し、■が長押し。通過した丸や四角は塗りつぶされ、数字も追加済みです。</p>
+        </div>
+      </header>
+
+      <section class="panel status-panel" aria-label="入力状況">
+        <div class="status-grid">
+          <div class="status-card">
+            <span class="label">現在の入力</span>
+            <strong id="currentCode" class="code-display">未入力</strong>
+          </div>
+          <div class="status-card">
+            <span class="label">判定文字</span>
+            <strong id="currentLetter" class="letter-display">-</strong>
+          </div>
+          <div class="status-card">
+            <span class="label">確定済み</span>
+            <strong id="outputText" class="output-display">-</strong>
+          </div>
+        </div>
+
+        <div class="time-meter-wrap">
+          <div class="time-meter-labels">
+            <span>● 短押し</span>
+            <span>■ 長押し</span>
+          </div>
+          <div class="time-meter">
+            <div id="timeBar" class="time-bar"></div>
+            <div class="threshold-line" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel legend-panel" aria-label="記号説明">
+        <div class="legend-item">
+          <span class="shape-swatch dot" aria-hidden="true"></span>
+          <span>短押し</span>
+        </div>
+        <div class="legend-item">
+          <span class="shape-swatch dash" aria-hidden="true"></span>
+          <span>長押し</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-chip path"></span>
+          <span>通過済み</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-chip current"></span>
+          <span>現在位置</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-chip final"></span>
+          <span>確定位置</span>
+        </div>
+      </section>
+
+      <section class="panel board-panel" aria-label="モールス信号ボード">
+        <div class="board-wrap">
+          <svg id="morseBoard" class="morse-board" viewBox="0 0 960 980" role="img" aria-label="モールス信号ボード"></svg>
+        </div>
+      </section>
+
+      <section class="panel control-panel" aria-label="操作">
+        <button id="keyButton" class="key-button" type="button">押す</button>
+        <div class="button-row">
+          <button id="spaceButton" class="secondary-button" type="button">スペース</button>
+          <button id="deleteButton" class="secondary-button" type="button">1つ戻る</button>
+          <button id="resetButton" class="secondary-button danger" type="button">リセット</button>
+        </div>
+        <p class="hint">スマホではボード全体が画面幅に収まるよう縮小表示されます。数字は下段の一覧に追加してあります。未対応コードは ? で確定します。</p>
+      </section>
     </section>
 
-    <section class="panel board-panel" aria-label="モールス信号ボード">
-      <div class="board-wrap">
-        <svg id="morseBoard" class="morse-board" viewBox="0 0 960 980" role="img" aria-label="モールス信号ボード"></svg>
-      </div>
-    </section>
+    <section id="gameScreen" class="screen hidden">
+      <header class="header with-back">
+        <button id="gameBackButton" class="back-button" type="button">← 戻る</button>
+        <div>
+          <h1>40秒チャレンジ</h1>
+          <p>単語を1文字ずつモールス信号で入力します。ミスしても減点なし、コンボのみリセットされます。</p>
+        </div>
+      </header>
 
-    <section class="panel control-panel" aria-label="操作">
-      <button id="keyButton" class="key-button" type="button">押す</button>
-      <div class="button-row">
-        <button id="spaceButton" class="secondary-button" type="button">スペース</button>
-        <button id="deleteButton" class="secondary-button" type="button">1つ戻る</button>
-        <button id="resetButton" class="secondary-button danger" type="button">リセット</button>
-      </div>
-      <p class="hint">スマホではボード全体が画面幅に収まるよう縮小表示されます。数字は下段の一覧に追加してあります。未対応コードは ? で確定します。</p>
+      <section class="panel game-panel">
+        <div class="game-hud">
+          <div class="status-card"><span class="label">残り時間</span><strong id="gameTime">40.0</strong></div>
+          <div class="status-card"><span class="label">スコア</span><strong id="gameScore">0</strong></div>
+          <div class="status-card"><span class="label">コンボ</span><strong id="gameCombo">0</strong></div>
+          <div class="status-card"><span class="label">最大コンボ</span><strong id="gameMaxCombo">0</strong></div>
+        </div>
+
+        <div class="game-word-wrap">
+          <span class="label">出題単語</span>
+          <strong id="gameWord" class="game-word">-</strong>
+          <div id="gameWordProgress" class="game-word-progress"></div>
+        </div>
+
+        <div class="game-current">
+          <span class="label">現在の文字</span>
+          <strong id="gameCurrentLetter">-</strong>
+          <p id="gameMessage">スタートしてください。</p>
+        </div>
+
+        <button id="startGameButton" class="key-button game-start" type="button">スタート</button>
+        <button id="gameKeyButton" class="key-button" type="button">押す</button>
+
+        <div class="button-row">
+          <button id="gameSpaceButton" class="secondary-button" type="button">スペース</button>
+          <button id="gameDeleteButton" class="secondary-button" type="button">1つ戻る</button>
+          <button id="gameQuitButton" class="secondary-button danger" type="button">終了</button>
+        </div>
+      </section>
+
+      <section class="panel ranking-panel">
+        <h2>自己ベストランキング</h2>
+        <ol id="rankingList"></ol>
+      </section>
     </section>
   </main>
 </body>

@@ -34,6 +34,10 @@ button {
   font: inherit;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .app {
   width: min(1120px, calc(100% - 20px));
   margin: 0 auto;
@@ -42,6 +46,13 @@ button {
 
 .header {
   margin-bottom: 14px;
+}
+
+.header.with-back {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
 }
 
 .header h1 {
@@ -63,6 +74,38 @@ button {
   box-shadow: var(--shadow);
   padding: 16px;
   margin-bottom: 14px;
+}
+
+.mode-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.mode-button,
+.back-button {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mode-button.primary {
+  background: linear-gradient(180deg, #38bdf8, #0284c7);
+  color: #00111f;
+}
+
+.mode-button.accent {
+  background: linear-gradient(180deg, #fbbf24, #d97706);
+  color: #111827;
+}
+
+.back-button {
+  border-radius: 999px;
+  padding: 10px 14px;
 }
 
 .status-grid {
@@ -400,6 +443,72 @@ button {
   line-height: 1.65;
 }
 
+.game-hud {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.game-word-wrap,
+.game-current {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--panel-2);
+  text-align: center;
+}
+
+.game-word {
+  display: block;
+  font-size: clamp(2rem, 9vw, 4rem);
+  letter-spacing: 0.12em;
+}
+
+.game-current strong {
+  display: block;
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.game-word-progress {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.game-token {
+  min-width: 30px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.16);
+  font-weight: 800;
+}
+
+.game-token.done {
+  background: rgba(46, 196, 104, 0.45);
+}
+
+.game-token.current {
+  background: rgba(56, 189, 248, 0.5);
+}
+
+.game-start {
+  margin-top: 14px;
+  background: linear-gradient(180deg, #fbbf24, #d97706);
+}
+
+.ranking-panel h2 {
+  margin: 0 0 8px;
+}
+
+.ranking-panel ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
 @media (max-width: 760px) {
   .app {
     width: min(100% - 12px, 1120px);
@@ -412,7 +521,13 @@ button {
     margin-bottom: 12px;
   }
 
-  .status-grid {
+  .mode-panel,
+  .status-grid,
+  .game-hud {
+    grid-template-columns: 1fr;
+  }
+
+  .header.with-back {
     grid-template-columns: 1fr;
   }
 

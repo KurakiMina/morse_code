@@ -1,505 +1,512 @@
-"use strict";
+const NS = "http://www.w3.org/2000/svg";
+const LONG_PRESS_MS = 300;
+const GAME_SECONDS = 40;
+const RANKING_KEY = "morseClassicGameRanking";
 
-const SHORT_LONG_THRESHOLD_MS = 320;
-const MAX_PRESS_MS = 800;
-const LETTER_COMMIT_DELAY_MS = 850;
-const MAX_CODE_LENGTH = 10;
-const TONE_FREQUENCY = 640;
+const MORSE = {
+  A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.", G: "--.",
+  H: "....", I: "..", J: ".---", K: "-.-", L: ".-..", M: "--", N: "-.",
+  O: "---", P: ".--.", Q: "--.-", R: ".-.", S: "...", T: "-", U: "..-",
+  V: "...-", W: ".--", X: "-..-", Y: "-.--", Z: "--..",
+  0: "-----", 1: ".----", 2: "..---", 3: "...--", 4: "....-", 5: ".....",
+  6: "-....", 7: "--...", 8: "---..", 9: "----."
+};
+const CODE_TO_CHAR = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
 
-const MORSE_TABLE = {
-  ".-": "A",
-  "-...": "B",
-  "-.-.": "C",
-  "-..": "D",
-  ".": "E",
-  "..-.": "F",
-  "--.": "G",
-  "....": "H",
-  "..": "I",
-  ".---": "J",
-  "-.-": "K",
-  ".-..": "L",
-  "--": "M",
-  "-.": "N",
-  "---": "O",
-  ".--.": "P",
-  "--.-": "Q",
-  ".-.": "R",
-  "...": "S",
-  "-": "T",
-  "..-": "U",
-  "...-": "V",
-  ".--": "W",
-  "-..-": "X",
-  "-.--": "Y",
-  "--..": "Z",
-  ".----": "1",
-  "..---": "2",
-  "...--": "3",
-  "....-": "4",
-  ".....": "5",
-  "-....": "6",
-  "--...": "7",
-  "---..": "8",
-  "----.": "9",
-  "-----": "0"
+const WORDS = {
+  easy: ["IT", "ON", "GO", "UP", "NO", "CAT", "DOG", "SUN"],
+  normal: ["CODE", "WAVE", "RADIO", "LIGHT", "TRAIN", "MOON"],
+  hard: ["MORSE", "SIGNAL", "BEACON", "STATION", "PLANET"],
+  expert: ["TELEGRAM", "WIRELESS", "SIGNAL7", "RADIO5", "BEACON9"]
 };
 
-const BOARD_LAYOUT = [
-  { code: "", letter: "", x: 480, y: 84, lx: 0, ly: 0 },
+const BOARD_NODES = {
+  "": { x: 480, y: 92, kind: "root", label: "" },
 
-  { code: "---", letter: "O", x: 62, y: 132, lx: 0, ly: -28 },
-  { code: "--", letter: "M", x: 150, y: 132, lx: 0, ly: -28 },
-  { code: "-", letter: "T", x: 252, y: 132, lx: 0, ly: -28 },
+  "-": { x: 374, y: 150, kind: "dash", label: "T", lx: 336, ly: 133 },
+  ".": { x: 520, y: 198, kind: "dot", label: "E", lx: 575, ly: 174 },
 
-  { code: ".", letter: "E", x: 554, y: 132, lx: 0, ly: -28 },
-  { code: "..", letter: "I", x: 648, y: 132, lx: 0, ly: -28 },
-  { code: "...", letter: "S", x: 744, y: 132, lx: 0, ly: -28 },
-  { code: "....", letter: "H", x: 838, y: 132, lx: 0, ly: -28 },
+  "--": { x: 265, y: 150, kind: "dash", label: "M", lx: 230, ly: 125 },
+  "-.": { x: 375, y: 520, kind: "dot", label: "N", lx: 413, ly: 492 },
+  ".-": { x: 520, y: 535, kind: "dash", label: "A", lx: 475, ly: 560 },
+  "..": { x: 625, y: 198, kind: "dot", label: "I", lx: 655, ly: 174 },
 
-  { code: "--.-", letter: "Q", x: 58, y: 252, lx: -28, ly: -6 },
-  { code: "--.", letter: "G", x: 150, y: 252, lx: 22, ly: -8 },
-  { code: "--..", letter: "Z", x: 150, y: 332, lx: 22, ly: -6 },
+  "---": { x: 140, y: 150, kind: "dash", label: "O", lx: 110, ly: 105 },
+  "--.": { x: 265, y: 330, kind: "dot", label: "G", lx: 312, ly: 300 },
+  "-.-": { x: 265, y: 555, kind: "dash", label: "K", lx: 230, ly: 590 },
+  "-..": { x: 375, y: 720, kind: "dot", label: "D", lx: 425, ly: 695 },
+  ".--": { x: 520, y: 725, kind: "dash", label: "W", lx: 475, ly: 748 },
+  ".-.": { x: 625, y: 535, kind: "dot", label: "R", lx: 655, ly: 585 },
+  "..-": { x: 625, y: 330, kind: "dash", label: "U", lx: 575, ly: 340 },
+  "...": { x: 728, y: 198, kind: "dot", label: "S", lx: 760, ly: 174 },
 
-  { code: "..-", letter: "U", x: 648, y: 252, lx: -22, ly: -8 },
-  { code: "...-", letter: "V", x: 744, y: 252, lx: 22, ly: -8 },
-  { code: "..-.", letter: "F", x: 648, y: 332, lx: 22, ly: -6 },
+  "----": { x: 46, y: 150, kind: "dash", label: "Q", lx: 40, ly: 228 },
+  "---.": { x: 265, y: 430, kind: "dot", label: "Z", lx: 315, ly: 430 },
+  "--.-": { x: 140, y: 330, kind: "dash", label: "Q", lx: 92, ly: 382 },
+  "-.--": { x: 140, y: 555, kind: "dash", label: "Y", lx: 42, ly: 540 },
+  "-.-.": { x: 265, y: 675, kind: "dot", label: "C", lx: 314, ly: 650 },
+  "-...": { x: 375, y: 865, kind: "dot", label: "B", lx: 322, ly: 850 },
+  "-..-": { x: 265, y: 720, kind: "dash", label: "X", lx: 168, ly: 720 },
+  ".---": { x: 520, y: 900, kind: "dash", label: "J", lx: 570, ly: 900 },
+  ".--.": { x: 625, y: 725, kind: "dot", label: "P", lx: 670, ly: 730 },
+  ".-..": { x: 730, y: 535, kind: "dot", label: "L", lx: 785, ly: 535 },
+  ".-.-": { x: 0, y: 0, kind: "dot", label: "" },
+  "..-.": { x: 625, y: 430, kind: "dot", label: "F", lx: 670, ly: 450 },
+  "...-": { x: 728, y: 330, kind: "dash", label: "V", lx: 780, ly: 318 },
+  "....": { x: 835, y: 198, kind: "dot", label: "H", lx: 875, ly: 170 }
+};
 
-  { code: "-.--", letter: "Y", x: 58, y: 440, lx: -22, ly: -8 },
-  { code: "-.-", letter: "K", x: 150, y: 440, lx: -22, ly: -8 },
-  { code: "-.", letter: "N", x: 282, y: 440, lx: 24, ly: -8 },
-  { code: ".-", letter: "A", x: 554, y: 440, lx: -24, ly: -8 },
-  { code: ".-.", letter: "R", x: 650, y: 440, lx: 0, ly: 34 },
-  { code: ".-..", letter: "L", x: 744, y: 440, lx: 24, ly: -8 },
+const BOARD_EDGES = Object.keys(BOARD_NODES)
+  .filter(code => code.length > 0 && BOARD_NODES[code].x > 0)
+  .map(code => ({ from: code.slice(0, -1), to: code }));
 
-  { code: "-.-.", letter: "C", x: 150, y: 532, lx: 22, ly: -8 },
-  { code: "-..-", letter: "X", x: 62, y: 600, lx: -22, ly: -8 },
-  { code: "-..", letter: "D", x: 282, y: 600, lx: 22, ly: -8 },
-  { code: "-...", letter: "B", x: 282, y: 680, lx: -18, ly: -8 },
-
-  { code: ".--", letter: "W", x: 554, y: 600, lx: -22, ly: -8 },
-  { code: ".--.", letter: "P", x: 650, y: 600, lx: 22, ly: -8 },
-  { code: ".---", letter: "J", x: 554, y: 680, lx: 22, ly: -8 }
+const DIGIT_POSITIONS = [
+  { char: "1", code: ".----", x: 90, y: 935 },
+  { char: "2", code: "..---", x: 185, y: 935 },
+  { char: "3", code: "...--", x: 280, y: 935 },
+  { char: "4", code: "....-", x: 375, y: 935 },
+  { char: "5", code: ".....", x: 470, y: 935 },
+  { char: "6", code: "-....", x: 565, y: 935 },
+  { char: "7", code: "--...", x: 660, y: 935 },
+  { char: "8", code: "---..", x: 755, y: 935 },
+  { char: "9", code: "----.", x: 850, y: 935 },
+  { char: "0", code: "-----", x: 850, y: 80 }
 ];
 
-const DIGIT_LAYOUT = [
-  { code: ".----", value: "1", x: 100, y: 822 },
-  { code: "..---", value: "2", x: 290, y: 822 },
-  { code: "...--", value: "3", x: 480, y: 822 },
-  { code: "....-", value: "4", x: 670, y: 822 },
-  { code: ".....", value: "5", x: 860, y: 822 },
-  { code: "-....", value: "6", x: 100, y: 910 },
-  { code: "--...", value: "7", x: 290, y: 910 },
-  { code: "---..", value: "8", x: 480, y: 910 },
-  { code: "----.", value: "9", x: 670, y: 910 },
-  { code: "-----", value: "0", x: 860, y: 910 }
-];
+const state = {
+  screen: "mode",
+  code: "",
+  output: "",
+  pointerStart: null,
+  meterRaf: null,
+  game: null
+};
 
-const currentCodeEl = document.getElementById("currentCode");
-const currentLetterEl = document.getElementById("currentLetter");
-const outputTextEl = document.getElementById("outputText");
-const timeBarEl = document.getElementById("timeBar");
-const boardEl = document.getElementById("morseBoard");
-const keyButton = document.getElementById("keyButton");
-const spaceButton = document.getElementById("spaceButton");
-const deleteButton = document.getElementById("deleteButton");
-const resetButton = document.getElementById("resetButton");
+const el = {};
 
-let currentCode = "";
-let outputText = "";
-let pressStartTime = 0;
-let isPressing = false;
-let pressAnimationId = null;
-let commitTimerId = null;
+document.addEventListener("DOMContentLoaded", () => {
+  [
+    "modeScreen", "classicScreen", "gameScreen",
+    "classicModeButton", "gameModeButton", "classicBackButton", "gameBackButton",
+    "currentCode", "currentLetter", "outputText", "timeBar", "morseBoard",
+    "keyButton", "spaceButton", "deleteButton", "resetButton",
+    "startGameButton", "gameKeyButton", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
+    "gameTime", "gameScore", "gameCombo", "gameMaxCombo", "gameWord", "gameWordProgress", "gameCurrentLetter", "gameMessage", "rankingList"
+  ].forEach(id => el[id] = document.getElementById(id));
 
-let audioContext = null;
-let oscillator = null;
-let gainNode = null;
+  el.classicModeButton.addEventListener("click", () => showScreen("classic"));
+  el.gameModeButton.addEventListener("click", () => showScreen("game"));
+  el.classicBackButton.addEventListener("click", () => showScreen("mode"));
+  el.gameBackButton.addEventListener("click", () => {
+    stopGame();
+    showScreen("mode");
+  });
 
-const treeNodeMap = new Map();
-const digitNodeMap = new Map();
-const edgeMap = new Map();
-const layoutMap = new Map(BOARD_LAYOUT.map((item) => [item.code, item]));
-const digitLayoutMap = new Map(DIGIT_LAYOUT.map((item) => [item.code, item]));
+  setupPressButton(el.keyButton, addClassicSymbol, el.timeBar);
+  el.spaceButton.addEventListener("click", confirmClassic);
+  el.deleteButton.addEventListener("click", deleteClassic);
+  el.resetButton.addEventListener("click", resetClassic);
 
-function createSvgEl(name, attrs = {}) {
-  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
-  for (const [key, value] of Object.entries(attrs)) {
-    el.setAttribute(key, String(value));
+  setupPressButton(el.gameKeyButton, addGameSymbol, null);
+  el.gameSpaceButton.addEventListener("click", () => addGameSymbol("space"));
+  el.gameDeleteButton.addEventListener("click", deleteGameInput);
+  el.gameQuitButton.addEventListener("click", endGame);
+  el.startGameButton.addEventListener("click", startGame);
+
+  document.addEventListener("keydown", handleKeyboard);
+
+  renderClassicBoard();
+  updateClassic();
+  renderRanking();
+});
+
+function showScreen(screen) {
+  state.screen = screen;
+  el.modeScreen.classList.toggle("hidden", screen !== "mode");
+  el.classicScreen.classList.toggle("hidden", screen !== "classic");
+  el.gameScreen.classList.toggle("hidden", screen !== "game");
+  if (screen === "classic") {
+    renderClassicBoard();
+    updateClassic();
   }
+  if (screen === "game") {
+    renderRanking();
+  }
+}
+
+function setupPressButton(button, callback, meter) {
+  let startAt = 0;
+  let active = false;
+
+  const start = event => {
+    event.preventDefault();
+    active = true;
+    startAt = performance.now();
+    button.classList.add("pressing");
+    if (meter) updateMeter(meter, startAt);
+  };
+
+  const finish = event => {
+    if (!active) return;
+    event.preventDefault();
+    active = false;
+    button.classList.remove("pressing");
+    if (state.meterRaf) cancelAnimationFrame(state.meterRaf);
+    if (meter) meter.style.width = "0%";
+    const elapsed = performance.now() - startAt;
+    callback(elapsed >= LONG_PRESS_MS ? "-" : ".");
+  };
+
+  button.addEventListener("pointerdown", start);
+  button.addEventListener("pointerup", finish);
+  button.addEventListener("pointerleave", finish);
+  button.addEventListener("pointercancel", finish);
+}
+
+function updateMeter(meter, startAt) {
+  const elapsed = performance.now() - startAt;
+  const pct = Math.min(100, elapsed / LONG_PRESS_MS * 100);
+  meter.style.width = `${pct}%`;
+  state.meterRaf = requestAnimationFrame(() => updateMeter(meter, startAt));
+}
+
+function handleKeyboard(event) {
+  if (state.screen === "classic") {
+    if (event.key === ".") addClassicSymbol(".");
+    if (event.key === "-") addClassicSymbol("-");
+    if (event.key === "Backspace") deleteClassic();
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      confirmClassic();
+    }
+  }
+
+  if (state.screen === "game" && state.game) {
+    if (event.key === ".") addGameSymbol(".");
+    if (event.key === "-") addGameSymbol("-");
+    if (event.key === "Backspace") deleteGameInput();
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      addGameSymbol("space");
+    }
+  }
+}
+
+function addClassicSymbol(symbol) {
+  if (state.code.length >= 5) return;
+  state.code += symbol;
+  updateClassic();
+}
+
+function deleteClassic() {
+  state.code = state.code.slice(0, -1);
+  updateClassic();
+}
+
+function resetClassic() {
+  state.code = "";
+  state.output = "";
+  updateClassic();
+}
+
+function confirmClassic() {
+  if (!state.code) return;
+  state.output += CODE_TO_CHAR[state.code] || "?";
+  state.code = "";
+  updateClassic();
+}
+
+function updateClassic() {
+  el.currentCode.textContent = state.code ? toDisplayCode(state.code) : "未入力";
+  el.currentLetter.textContent = state.code ? (CODE_TO_CHAR[state.code] || "?") : "-";
+  el.outputText.textContent = state.output || "-";
+  renderClassicBoard();
+}
+
+function renderClassicBoard(finalCode = "") {
+  const svg = el.morseBoard;
+  svg.innerHTML = "";
+
+  const defs = createSvg("defs");
+  const gradient = createSvg("linearGradient", { id: "boardGradient", x1: "0", y1: "0", x2: "0", y2: "1" });
+  gradient.appendChild(createSvg("stop", { offset: "0%", "stop-color": "#173155" }));
+  gradient.appendChild(createSvg("stop", { offset: "100%", "stop-color": "#07111f" }));
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+
+  svg.appendChild(createSvg("rect", { class: "board-bg", x: 12, y: 12, width: 936, height: 956, rx: 28 }));
+  svg.appendChild(createSvg("rect", { class: "board-frame", x: 22, y: 22, width: 916, height: 936, rx: 22 }));
+
+  svg.appendChild(text("MORSE", 98, 58, "board-title"));
+  svg.appendChild(text("CODE", 360, 58, "board-title"));
+
+  renderRoot(svg);
+
+  BOARD_EDGES.forEach(edge => {
+    const from = BOARD_NODES[edge.from];
+    const to = BOARD_NODES[edge.to];
+    if (!from || !to || from.x <= 0 || to.x <= 0) return;
+    const active = isPath(edge.to);
+    svg.appendChild(createSvg("line", {
+      class: `board-edge${active ? " path" : ""}`,
+      x1: from.x, y1: from.y, x2: to.x, y2: to.y
+    }));
+  });
+
+  Object.entries(BOARD_NODES).forEach(([code, node]) => {
+    if (!code || node.x <= 0) return;
+    renderNode(svg, code, node);
+  });
+
+  DIGIT_POSITIONS.forEach(item => renderDigit(svg, item));
+}
+
+function renderRoot(svg) {
+  const group = createSvg("g", { class: "board-node root" });
+  group.appendChild(createSvg("circle", { class: "node-shape", cx: 480, cy: 92, r: 28 }));
+  group.appendChild(createSvg("path", { class: "antenna-line", d: "M462 78 L480 112 L498 78 M462 78 L498 78 M480 112 L480 143" }));
+  svg.appendChild(group);
+}
+
+function renderNode(svg, code, node) {
+  const group = createSvg("g", { class: `board-node ${node.kind}${isPath(code) ? " path" : ""}${state.code === code ? " active" : ""}` });
+
+  if (node.kind === "dot") {
+    group.appendChild(createSvg("circle", { class: "node-shape", cx: node.x, cy: node.y, r: nodeRadius(code) }));
+  } else {
+    const w = dashWidth(code);
+    const h = dashHeight(code);
+    group.appendChild(createSvg("rect", {
+      class: "node-shape",
+      x: node.x - w / 2,
+      y: node.y - h / 2,
+      width: w,
+      height: h,
+      rx: 4
+    }));
+  }
+
+  svg.appendChild(group);
+
+  if (node.label) {
+    svg.appendChild(text(node.label, node.lx, node.ly, "board-node-label"));
+  }
+}
+
+function renderDigit(svg, item) {
+  const className = `number-chip${isPath(item.code) ? " path" : ""}${state.code === item.code ? " current" : ""}`;
+  const group = createSvg("g", { class: className });
+  group.appendChild(createSvg("rect", { class: "number-chip-body", x: item.x - 42, y: item.y - 28, width: 84, height: 56, rx: 12 }));
+  group.appendChild(text(item.char, item.x, item.y - 8, "number-chip-digit"));
+  group.appendChild(text(toDisplayCode(item.code), item.x, item.y + 17, "number-chip-code"));
+  svg.appendChild(group);
+}
+
+function isPath(code) {
+  return state.code && state.code.startsWith(code);
+}
+
+function nodeRadius(code) {
+  if (code.length <= 2) return 27;
+  if (code.length === 3) return 25;
+  return 23;
+}
+
+function dashWidth(code) {
+  if (code.length <= 2) return 78;
+  if (code.length === 3) return 70;
+  return 62;
+}
+
+function dashHeight(code) {
+  if (code.length <= 2) return 38;
+  if (code.length === 3) return 34;
+  return 30;
+}
+
+function createSvg(name, attrs = {}) {
+  const el = document.createElementNS(NS, name);
+  Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
   return el;
 }
 
-function buildBoard() {
-  boardEl.innerHTML = "";
-  treeNodeMap.clear();
-  digitNodeMap.clear();
-  edgeMap.clear();
-
-  const defs = createSvgEl("defs");
-  const gradient = createSvgEl("linearGradient", {
-    id: "boardGradient",
-    x1: "0%",
-    y1: "0%",
-    x2: "0%",
-    y2: "100%"
-  });
-  gradient.append(
-    createSvgEl("stop", { offset: "0%", "stop-color": "#163256" }),
-    createSvgEl("stop", { offset: "100%", "stop-color": "#09121f" })
-  );
-  defs.appendChild(gradient);
-  boardEl.appendChild(defs);
-
-  boardEl.append(
-    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 964, rx: 28, class: "board-bg" }),
-    createSvgEl("rect", { x: 8, y: 8, width: 944, height: 964, rx: 28, class: "board-frame" })
-  );
-
-  const titleLeft = createSvgEl("text", { x: 40, y: 48, class: "board-title" });
-  titleLeft.textContent = "MORSE";
-  const titleRight = createSvgEl("text", { x: 667, y: 48, class: "board-title" });
-  titleRight.textContent = "CODE";
-  const digitTitle = createSvgEl("text", { x: 480, y: 758, class: "board-subtitle", "text-anchor": "middle" });
-  digitTitle.textContent = "NUMBERS";
-  boardEl.append(titleLeft, titleRight, digitTitle);
-
-  const edgeLayer = createSvgEl("g", { id: "edgeLayer" });
-  const nodeLayer = createSvgEl("g", { id: "nodeLayer" });
-  const digitLayer = createSvgEl("g", { id: "digitLayer" });
-  boardEl.append(edgeLayer, nodeLayer, digitLayer);
-
-  for (const item of BOARD_LAYOUT) {
-    if (item.code === "") continue;
-    const parent = layoutMap.get(item.code.slice(0, -1));
-    if (!parent) continue;
-    const edge = createEdge(parent, item);
-    edge.dataset.code = item.code;
-    edgeLayer.appendChild(edge);
-    edgeMap.set(item.code, edge);
-  }
-
-  for (const item of BOARD_LAYOUT) {
-    const node = createNode(item);
-    nodeLayer.appendChild(node);
-    treeNodeMap.set(item.code, node);
-  }
-
-  for (const item of DIGIT_LAYOUT) {
-    const chip = createDigitChip(item);
-    digitLayer.appendChild(chip);
-    digitNodeMap.set(item.code, chip);
-  }
+function text(value, x, y, className) {
+  const t = createSvg("text", { x, y, class: className });
+  t.textContent = value;
+  return t;
 }
 
-function createEdge(parent, child) {
-  const sameRow = parent.y === child.y;
-  let points = "";
-
-  if (sameRow || parent.x === child.x) {
-    points = `${parent.x},${parent.y} ${child.x},${child.y}`;
-  } else {
-    const midY = Math.round((parent.y + child.y) / 2);
-    points = `${parent.x},${parent.y} ${parent.x},${midY} ${child.x},${midY} ${child.x},${child.y}`;
-  }
-
-  return createSvgEl("polyline", {
-    points,
-    class: "board-edge"
-  });
+function toDisplayCode(code) {
+  return code.replaceAll(".", "●").replaceAll("-", "■");
 }
 
-function createNode(item) {
-  const nodeClass = item.code === "" ? "board-node root" : `board-node ${item.code.endsWith(".") ? "dot" : "dash"}`;
-  const group = createSvgEl("g", {
-    class: nodeClass,
-    transform: `translate(${item.x}, ${item.y})`
-  });
-  group.dataset.code = item.code;
-
-  if (item.code === "") {
-    const antenna = createSvgEl("path", {
-      d: "M -16 10 L 0 -12 L 16 10 M -10 2 L 0 -12 L 10 2 M 0 -12 L 0 14",
-      class: "antenna-line"
-    });
-    const base = createSvgEl("circle", { cx: 0, cy: 20, r: 11, class: "node-shape" });
-    group.append(antenna, base);
-  } else if (item.code.endsWith(".")) {
-    group.appendChild(createSvgEl("circle", { cx: 0, cy: 0, r: 13, class: "node-shape" }));
-  } else {
-    group.appendChild(createSvgEl("rect", { x: -13, y: -13, width: 26, height: 26, rx: 3, class: "node-shape" }));
-  }
-
-  if (item.letter) {
-    const label = createSvgEl("text", {
-      x: item.lx,
-      y: item.ly,
-      class: "board-node-label"
-    });
-    label.textContent = item.letter;
-    group.appendChild(label);
-  }
-
-  return group;
+function startGame() {
+  stopGame();
+  state.game = {
+    startedAt: performance.now(),
+    raf: null,
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
+    word: "",
+    index: 0,
+    input: "",
+    words: 0,
+    chars: 0,
+    misses: 0
+  };
+  nextWord();
+  el.gameMessage.textContent = "入力してください。";
+  tickGame();
 }
 
-function createDigitChip(item) {
-  const group = createSvgEl("g", {
-    class: "number-chip",
-    transform: `translate(${item.x}, ${item.y})`
-  });
-  group.dataset.code = item.code;
-
-  const rect = createSvgEl("rect", {
-    x: -68,
-    y: -28,
-    width: 136,
-    height: 56,
-    rx: 14,
-    class: "number-chip-body"
-  });
-  const digit = createSvgEl("text", { x: -34, y: 1, class: "number-chip-digit" });
-  digit.textContent = item.value;
-  const code = createSvgEl("text", { x: 18, y: 1, class: "number-chip-code" });
-  code.textContent = codeToDisplay(item.code).replace(/ /g, "");
-
-  group.append(rect, digit, code);
-  return group;
+function stopGame() {
+  if (state.game?.raf) cancelAnimationFrame(state.game.raf);
+  state.game = null;
 }
 
-function ensureAudioContext() {
-  if (!audioContext) {
-    audioContext = new AudioContext();
-  }
-  if (audioContext.state === "suspended") {
-    audioContext.resume();
-  }
-}
+function addGameSymbol(symbol) {
+  const game = state.game;
+  if (!game) return;
 
-function startTone() {
-  ensureAudioContext();
-  oscillator = audioContext.createOscillator();
-  gainNode = audioContext.createGain();
-  oscillator.type = "sine";
-  oscillator.frequency.value = TONE_FREQUENCY;
-  gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02);
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  oscillator.start();
-}
-
-function stopTone() {
-  if (!oscillator || !gainNode || !audioContext) return;
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.03);
-  oscillator.stop(audioContext.currentTime + 0.04);
-  oscillator = null;
-  gainNode = null;
-}
-
-function startPress(event) {
-  if (event) event.preventDefault();
-  if (isPressing) return;
-  isPressing = true;
-  pressStartTime = performance.now();
-  keyButton.classList.add("pressing");
-  clearTimeout(commitTimerId);
-  startTone();
-  animateTimeBar();
-}
-
-function endPress(event) {
-  if (event) event.preventDefault();
-  if (!isPressing) return;
-  const duration = performance.now() - pressStartTime;
-  const symbol = duration >= SHORT_LONG_THRESHOLD_MS ? "-" : ".";
-  isPressing = false;
-  keyButton.classList.remove("pressing");
-  stopTone();
-  cancelAnimationFrame(pressAnimationId);
-  updateTimeBar(0);
-  appendSymbol(symbol);
-}
-
-function animateTimeBar() {
-  if (!isPressing) return;
-  const elapsed = performance.now() - pressStartTime;
-  const progress = Math.min(elapsed / MAX_PRESS_MS, 1);
-  updateTimeBar(progress);
-  pressAnimationId = requestAnimationFrame(animateTimeBar);
-}
-
-function updateTimeBar(progress) {
-  timeBarEl.style.width = `${Math.round(progress * 100)}%`;
-}
-
-function appendSymbol(symbol) {
-  if (currentCode.length >= MAX_CODE_LENGTH) {
-    flashInvalid();
+  if (symbol === "space") {
+    checkGameInput();
     return;
   }
 
-  currentCode += symbol;
-  updateDisplay();
-  updateBoardState(false);
-
-  clearTimeout(commitTimerId);
-  commitTimerId = setTimeout(commitLetter, LETTER_COMMIT_DELAY_MS);
+  if (game.input.length >= 5) return;
+  game.input += symbol;
+  checkGameInput();
 }
 
-function commitLetter() {
-  if (!currentCode) return;
-
-  updateBoardState(true);
-  const letter = MORSE_TABLE[currentCode] || "?";
-  outputText += letter;
-  currentCode = "";
-
-  setTimeout(() => {
-    updateDisplay();
-    updateBoardState(false);
-  }, 240);
+function deleteGameInput() {
+  if (!state.game) return;
+  state.game.input = state.game.input.slice(0, -1);
+  updateGame();
 }
 
-function flashInvalid() {
-  keyButton.animate(
-    [
-      { transform: "translateX(0)" },
-      { transform: "translateX(-6px)" },
-      { transform: "translateX(6px)" },
-      { transform: "translateX(0)" }
-    ],
-    {
-      duration: 180,
-      easing: "ease-out"
+function checkGameInput() {
+  const game = state.game;
+  const target = game.word[game.index];
+  const expected = MORSE[target];
+
+  if (game.input === expected) {
+    game.score += 10 + game.combo * 2;
+    game.combo += 1;
+    game.maxCombo = Math.max(game.maxCombo, game.combo);
+    game.chars += 1;
+    game.index += 1;
+    game.input = "";
+    el.gameMessage.textContent = `正解：${target}`;
+
+    if (game.index >= game.word.length) {
+      game.words += 1;
+      game.score += game.word.length * 20;
+      nextWord();
     }
-  );
+  } else if (!expected.startsWith(game.input) || game.input.length >= expected.length) {
+    game.combo = 0;
+    game.misses += 1;
+    game.input = "";
+    el.gameMessage.textContent = `ミス：${target} は ${toDisplayCode(expected)}`;
+  }
+
+  updateGame();
 }
 
-function codeToDisplay(code) {
-  if (!code) return "未入力";
-  return [...code].map((symbol) => (symbol === "." ? "●" : "■")).join(" ");
+function nextWord() {
+  const game = state.game;
+  const level = game.words >= 8 ? "expert" : game.words >= 5 ? "hard" : game.words >= 2 ? "normal" : "easy";
+  const pool = WORDS[level];
+  let word = pool[Math.floor(Math.random() * pool.length)];
+  while (pool.length > 1 && word === game.word) {
+    word = pool[Math.floor(Math.random() * pool.length)];
+  }
+  game.word = word;
+  game.index = 0;
+  game.input = "";
+  updateGame();
 }
 
-function getCurrentLetterLabel(code) {
-  if (!code) return "-";
-  return MORSE_TABLE[code] || "未対応";
+function tickGame() {
+  const game = state.game;
+  if (!game) return;
+
+  const remain = Math.max(0, GAME_SECONDS - (performance.now() - game.startedAt) / 1000);
+  el.gameTime.textContent = remain.toFixed(1);
+
+  if (remain <= 0) {
+    endGame();
+    return;
+  }
+
+  game.raf = requestAnimationFrame(tickGame);
 }
 
-function updateDisplay() {
-  currentCodeEl.textContent = codeToDisplay(currentCode);
-  currentLetterEl.textContent = getCurrentLetterLabel(currentCode);
-  outputTextEl.textContent = outputText || "-";
+function updateGame() {
+  const game = state.game;
+  if (!game) return;
+
+  el.gameScore.textContent = game.score;
+  el.gameCombo.textContent = game.combo;
+  el.gameMaxCombo.textContent = game.maxCombo;
+  el.gameWord.textContent = game.word;
+  el.gameCurrentLetter.textContent = game.word[game.index] || "-";
+
+  el.gameWordProgress.innerHTML = "";
+  [...game.word].forEach((char, index) => {
+    const token = document.createElement("span");
+    token.className = "game-token";
+    if (index < game.index) token.classList.add("done");
+    if (index === game.index) token.classList.add("current");
+    token.textContent = char;
+    el.gameWordProgress.appendChild(token);
+  });
 }
 
-function clearStates() {
-  for (const node of treeNodeMap.values()) {
-    node.classList.remove("path", "active", "final");
-  }
-  for (const node of digitNodeMap.values()) {
-    node.classList.remove("path", "current", "final");
-  }
-  for (const edge of edgeMap.values()) {
-    edge.classList.remove("path");
-  }
+function endGame() {
+  const game = state.game;
+  if (!game) return;
+  if (game.raf) cancelAnimationFrame(game.raf);
+
+  const record = {
+    score: game.score,
+    words: game.words,
+    maxCombo: game.maxCombo,
+    date: new Date().toLocaleDateString("ja-JP")
+  };
+
+  const ranking = loadRanking();
+  ranking.push(record);
+  ranking.sort((a, b) => b.score - a.score);
+  localStorage.setItem(RANKING_KEY, JSON.stringify(ranking.slice(0, 5)));
+
+  el.gameMessage.textContent = `終了：${record.score}点 / ${record.words}語 / 最大${record.maxCombo}コンボ`;
+  state.game = null;
+  renderRanking();
 }
 
-function updateBoardState(isFinal) {
-  clearStates();
-
-  const root = treeNodeMap.get("");
-  if (root) {
-    root.classList.add("path");
-  }
-
-  let partial = "";
-  let lastMatchedCode = "";
-
-  for (const symbol of currentCode) {
-    partial += symbol;
-    const node = treeNodeMap.get(partial);
-    const edge = edgeMap.get(partial);
-    if (edge) edge.classList.add("path");
-    if (node) {
-      node.classList.add("path");
-      lastMatchedCode = partial;
-    }
-  }
-
-  if (!currentCode) return;
-
-  if (treeNodeMap.has(currentCode)) {
-    const node = treeNodeMap.get(currentCode);
-    node.classList.remove("path");
-    node.classList.add(isFinal ? "final" : "active");
-  } else if (digitNodeMap.has(currentCode)) {
-    const chip = digitNodeMap.get(currentCode);
-    chip.classList.add(isFinal ? "final" : "current");
-  } else if (lastMatchedCode && treeNodeMap.has(lastMatchedCode)) {
-    const node = treeNodeMap.get(lastMatchedCode);
-    node.classList.remove("path");
-    node.classList.add(isFinal ? "final" : "active");
+function loadRanking() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RANKING_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
 }
 
-function addSpace() {
-  if (outputText && !outputText.endsWith(" ")) {
-    outputText += " ";
-    updateDisplay();
+function renderRanking() {
+  const ranking = loadRanking();
+  el.rankingList.innerHTML = "";
+  if (!ranking.length) {
+    const li = document.createElement("li");
+    li.textContent = "まだ記録がありません";
+    el.rankingList.appendChild(li);
+    return;
   }
+  ranking.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = `${item.score}点 / ${item.words}語 / 最大${item.maxCombo}コンボ / ${item.date}`;
+    el.rankingList.appendChild(li);
+  });
 }
-
-function deleteLast() {
-  if (currentCode) {
-    currentCode = currentCode.slice(0, -1);
-  } else {
-    outputText = outputText.slice(0, -1);
-  }
-  clearTimeout(commitTimerId);
-  updateDisplay();
-  updateBoardState(false);
-}
-
-function resetAll() {
-  currentCode = "";
-  outputText = "";
-  clearTimeout(commitTimerId);
-  updateDisplay();
-  updateBoardState(false);
-}
-
-keyButton.addEventListener("pointerdown", startPress);
-keyButton.addEventListener("pointerup", endPress);
-keyButton.addEventListener("pointercancel", endPress);
-keyButton.addEventListener("pointerleave", () => {
-  if (isPressing) endPress();
-});
-
-spaceButton.addEventListener("click", addSpace);
-deleteButton.addEventListener("click", deleteLast);
-resetButton.addEventListener("click", resetAll);
-
-window.addEventListener("keydown", (event) => {
-  if (event.code === "Space" && !event.repeat) {
-    event.preventDefault();
-    startPress(event);
-  }
-  if (event.code === "Backspace") {
-    event.preventDefault();
-    deleteLast();
-  }
-  if (event.code === "Escape") {
-    resetAll();
-  }
-});
-
-window.addEventListener("keyup", (event) => {
-  if (event.code === "Space") {
-    event.preventDefault();
-    endPress(event);
-  }
-});
-
-buildBoard();
-updateDisplay();
-updateBoardState(false);
