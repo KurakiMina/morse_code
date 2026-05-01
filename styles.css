@@ -567,3 +567,139 @@ button {
     font-size: 0.92rem;
   }
 }
+
+
+/* Additional modes. Classic mode selectors above are intentionally left unchanged. */
+.mode-panel {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.practice-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.2fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.practice-status-grid {
+  grid-template-columns: 1fr;
+}
+
+.practice-control-card,
+.practice-board-card {
+  background: var(--panel-2);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.practice-control-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+  justify-items: center;
+}
+
+.practice-board,
+.game-board {
+  background: linear-gradient(180deg, #132845 0%, #0a1424 100%);
+}
+
+.game-intro-panel {
+  text-align: center;
+}
+
+.game-intro-panel h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+.game-intro-panel p {
+  margin: 0 auto 16px;
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.rule-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.rule-grid > div,
+.result-grid > div {
+  background: var(--panel-2);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.rule-grid strong,
+.result-grid strong {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.game-timer-track {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  margin: 12px 0 14px;
+}
+
+.game-timer-bar {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #2ec468, #facc15, #ef4444);
+  transform-origin: left;
+}
+
+.game-main-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.2fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.game-left,
+.game-right {
+  min-width: 0;
+}
+
+.game-word-wrap,
+.game-current {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.game-current p.good {
+  color: var(--path-stroke);
+}
+
+.game-current p.bad {
+  color: #fecaca;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.result-panel h2 {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .mode-panel,
+  .practice-layout,
+  .game-main-layout,
+  .rule-grid,
+  .result-grid {
+    grid-template-columns: 1fr;
+  }
+}

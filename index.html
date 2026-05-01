@@ -17,6 +17,7 @@
 
       <section class="panel mode-panel" aria-label="モード選択">
         <button id="classicModeButton" class="mode-button primary" type="button">クラシックモード</button>
+        <button id="practiceModeButton" class="mode-button" type="button">練習モード</button>
         <button id="gameModeButton" class="mode-button accent" type="button">ゲームモード</button>
       </section>
     </section>
@@ -98,16 +99,72 @@
       </section>
     </section>
 
+
+    <section id="practiceScreen" class="screen hidden">
+      <header class="header with-back">
+        <button id="practiceBackButton" class="back-button" type="button">← 戻る</button>
+        <div>
+          <h1>練習モード</h1>
+          <p>現在の入力、判定文字、確定済み文字を確認しながら練習できます。クラシックモードは変更していません。</p>
+        </div>
+      </header>
+
+      <section class="panel practice-layout" aria-label="練習モード">
+        <div class="practice-side">
+          <div class="status-grid practice-status-grid">
+            <div class="status-card">
+              <span class="label">現在の入力</span>
+              <strong id="practiceCurrentCode" class="code-display">未入力</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">判定文字</span>
+              <strong id="practiceCurrentLetter" class="letter-display">-</strong>
+            </div>
+            <div class="status-card">
+              <span class="label">確定済み</span>
+              <strong id="practiceOutputText" class="output-display">-</strong>
+            </div>
+          </div>
+
+          <div class="practice-control-card">
+            <button id="practiceKeyButton" class="key-button" type="button">押す</button>
+            <div class="button-row">
+              <button id="practiceSpaceButton" class="secondary-button" type="button">スペース</button>
+              <button id="practiceDeleteButton" class="secondary-button" type="button">1つ戻る</button>
+              <button id="practiceResetButton" class="secondary-button danger" type="button">リセット</button>
+            </div>
+            <p class="hint">短押しは ●、長押しは ■ です。入力経路は右側のボードで確認できます。</p>
+          </div>
+        </div>
+
+        <div class="practice-board-card">
+          <svg id="practiceBoard" class="morse-board practice-board" viewBox="0 0 960 980" role="img" aria-label="練習モードのモールス信号ボード"></svg>
+        </div>
+      </section>
+    </section>
+
     <section id="gameScreen" class="screen hidden">
       <header class="header with-back">
         <button id="gameBackButton" class="back-button" type="button">← 戻る</button>
         <div>
-          <h1>40秒チャレンジ</h1>
-          <p>単語を1文字ずつモールス信号で入力します。ミスしても減点なし、コンボのみリセットされます。</p>
+          <h1>ゲームモード</h1>
+          <p>40秒以内に単語を1文字ずつ入力します。ミスしても減点なし、コンボのみリセットされます。</p>
         </div>
       </header>
 
-      <section class="panel game-panel">
+      <section id="gameIntroPanel" class="panel game-intro-panel">
+        <h2>40秒チャレンジ</h2>
+        <p>表示された単語をモールス信号で入力してください。序盤は短い単語、正解が続くと長い単語や数字入り単語が出ます。</p>
+        <div class="rule-grid">
+          <div><span class="label">文字正解</span><strong>+10点</strong></div>
+          <div><span class="label">単語クリア</span><strong>単語長 × 20点</strong></div>
+          <div><span class="label">コンボ</span><strong>連続正解で加点</strong></div>
+          <div><span class="label">ランキング</span><strong>自己ベスト5位</strong></div>
+        </div>
+        <button id="startGameButton" class="key-button game-start" type="button">スタート</button>
+      </section>
+
+      <section id="gamePlayPanel" class="panel game-panel hidden">
         <div class="game-hud">
           <div class="status-card"><span class="label">残り時間</span><strong id="gameTime">40.0</strong></div>
           <div class="status-card"><span class="label">スコア</span><strong id="gameScore">0</strong></div>
@@ -115,25 +172,53 @@
           <div class="status-card"><span class="label">最大コンボ</span><strong id="gameMaxCombo">0</strong></div>
         </div>
 
-        <div class="game-word-wrap">
-          <span class="label">出題単語</span>
-          <strong id="gameWord" class="game-word">-</strong>
-          <div id="gameWordProgress" class="game-word-progress"></div>
+        <div class="game-timer-track">
+          <div id="gameTimerBar" class="game-timer-bar"></div>
         </div>
 
-        <div class="game-current">
-          <span class="label">現在の文字</span>
-          <strong id="gameCurrentLetter">-</strong>
-          <p id="gameMessage">スタートしてください。</p>
+        <div class="game-main-layout">
+          <div class="game-left">
+            <div class="game-word-wrap">
+              <span class="label">出題単語</span>
+              <strong id="gameWord" class="game-word">-</strong>
+              <div id="gameWordProgress" class="game-word-progress"></div>
+            </div>
+
+            <div class="game-current">
+              <span class="label">現在の文字</span>
+              <strong id="gameCurrentLetter">-</strong>
+              <p id="gameMessage">入力してください。</p>
+              <span class="label">現在の入力</span>
+              <strong id="gameCurrentCode" class="code-display">未入力</strong>
+            </div>
+
+            <button id="gameKeyButton" class="key-button" type="button">押す</button>
+
+            <div class="button-row">
+              <button id="gameSpaceButton" class="secondary-button" type="button">スペース</button>
+              <button id="gameDeleteButton" class="secondary-button" type="button">1つ戻る</button>
+              <button id="gameQuitButton" class="secondary-button danger" type="button">終了</button>
+            </div>
+          </div>
+
+          <div class="game-right">
+            <svg id="gameBoard" class="morse-board game-board" viewBox="0 0 960 980" role="img" aria-label="ゲームモードのモールス信号ボード"></svg>
+          </div>
         </div>
+      </section>
 
-        <button id="startGameButton" class="key-button game-start" type="button">スタート</button>
-        <button id="gameKeyButton" class="key-button" type="button">押す</button>
-
+      <section id="gameResultPanel" class="panel result-panel hidden">
+        <h2>結果</h2>
+        <div class="result-grid">
+          <div><span class="label">スコア</span><strong id="resultScore">0</strong></div>
+          <div><span class="label">正解単語</span><strong id="resultWords">0</strong></div>
+          <div><span class="label">正解文字</span><strong id="resultChars">0</strong></div>
+          <div><span class="label">最大コンボ</span><strong id="resultMaxCombo">0</strong></div>
+        </div>
+        <p id="resultWeakLetters" class="hint">苦手文字：なし</p>
         <div class="button-row">
-          <button id="gameSpaceButton" class="secondary-button" type="button">スペース</button>
-          <button id="gameDeleteButton" class="secondary-button" type="button">1つ戻る</button>
-          <button id="gameQuitButton" class="secondary-button danger" type="button">終了</button>
+          <button id="playAgainButton" class="secondary-button" type="button">もう一度プレイ</button>
+          <button id="backToGameIntroButton" class="secondary-button" type="button">説明に戻る</button>
         </div>
       </section>
 

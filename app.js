@@ -20,6 +20,7 @@ const WORDS = {
   expert: ["TELEGRAM", "WIRELESS", "SIGNAL7", "RADIO5", "BEACON9"]
 };
 
+/* Classic board coordinates: kept for the accepted classic UI. */
 const BOARD_NODES = {
   "": { x: 480, y: 92, kind: "root", label: "" },
 
@@ -77,8 +78,11 @@ const state = {
   screen: "mode",
   code: "",
   output: "",
-  pointerStart: null,
   meterRaf: null,
+  practice: {
+    code: "",
+    output: ""
+  },
   game: null
 };
 
@@ -86,17 +90,31 @@ const el = {};
 
 document.addEventListener("DOMContentLoaded", () => {
   [
-    "modeScreen", "classicScreen", "gameScreen",
-    "classicModeButton", "gameModeButton", "classicBackButton", "gameBackButton",
+    "modeScreen", "classicScreen", "practiceScreen", "gameScreen",
+    "classicModeButton", "practiceModeButton", "gameModeButton",
+    "classicBackButton", "practiceBackButton", "gameBackButton",
+
     "currentCode", "currentLetter", "outputText", "timeBar", "morseBoard",
     "keyButton", "spaceButton", "deleteButton", "resetButton",
-    "startGameButton", "gameKeyButton", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
-    "gameTime", "gameScore", "gameCombo", "gameMaxCombo", "gameWord", "gameWordProgress", "gameCurrentLetter", "gameMessage", "rankingList"
+
+    "practiceCurrentCode", "practiceCurrentLetter", "practiceOutputText", "practiceBoard",
+    "practiceKeyButton", "practiceSpaceButton", "practiceDeleteButton", "practiceResetButton",
+
+    "gameIntroPanel", "gamePlayPanel", "gameResultPanel",
+    "startGameButton", "playAgainButton", "backToGameIntroButton",
+    "gameKeyButton", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
+    "gameTime", "gameTimerBar", "gameScore", "gameCombo", "gameMaxCombo",
+    "gameWord", "gameWordProgress", "gameCurrentLetter", "gameCurrentCode", "gameMessage", "gameBoard",
+    "resultScore", "resultWords", "resultChars", "resultMaxCombo", "resultWeakLetters",
+    "rankingList"
   ].forEach(id => el[id] = document.getElementById(id));
 
   el.classicModeButton.addEventListener("click", () => showScreen("classic"));
+  el.practiceModeButton.addEventListener("click", () => showScreen("practice"));
   el.gameModeButton.addEventListener("click", () => showScreen("game"));
+
   el.classicBackButton.addEventListener("click", () => showScreen("mode"));
+  el.practiceBackButton.addEventListener("click", () => showScreen("mode"));
   el.gameBackButton.addEventListener("click", () => {
     stopGame();
     showScreen("mode");
@@ -107,16 +125,26 @@ document.addEventListener("DOMContentLoaded", () => {
   el.deleteButton.addEventListener("click", deleteClassic);
   el.resetButton.addEventListener("click", resetClassic);
 
+  setupPressButton(el.practiceKeyButton, addPracticeSymbol, null);
+  el.practiceSpaceButton.addEventListener("click", confirmPractice);
+  el.practiceDeleteButton.addEventListener("click", deletePractice);
+  el.practiceResetButton.addEventListener("click", resetPractice);
+
   setupPressButton(el.gameKeyButton, addGameSymbol, null);
   el.gameSpaceButton.addEventListener("click", () => addGameSymbol("space"));
   el.gameDeleteButton.addEventListener("click", deleteGameInput);
   el.gameQuitButton.addEventListener("click", endGame);
   el.startGameButton.addEventListener("click", startGame);
+  el.playAgainButton.addEventListener("click", startGame);
+  el.backToGameIntroButton.addEventListener("click", showGameIntro);
 
   document.addEventListener("keydown", handleKeyboard);
 
   renderClassicBoard();
   updateClassic();
+  renderBoardTo(el.practiceBoard, "");
+  updatePractice();
+  showGameIntro();
   renderRanking();
 });
 
@@ -124,19 +152,25 @@ function showScreen(screen) {
   state.screen = screen;
   el.modeScreen.classList.toggle("hidden", screen !== "mode");
   el.classicScreen.classList.toggle("hidden", screen !== "classic");
+  el.practiceScreen.classList.toggle("hidden", screen !== "practice");
   el.gameScreen.classList.toggle("hidden", screen !== "game");
+
   if (screen === "classic") {
     renderClassicBoard();
     updateClassic();
   }
+  if (screen === "practice") {
+    updatePractice();
+  }
   if (screen === "game") {
+    showGameIntro();
     renderRanking();
   }
 }
 
 function setupPressButton(button, callback, meter) {
   let startAt = 0;
-  let active = false;
+  let active = FalseValue();
 
   const start = event => {
     event.preventDefault();
@@ -163,6 +197,10 @@ function setupPressButton(button, callback, meter) {
   button.addEventListener("pointercancel", finish);
 }
 
+function FalseValue() {
+  return false;
+}
+
 function updateMeter(meter, startAt) {
   const elapsed = performance.now() - startAt;
   const pct = Math.min(100, elapsed / LONG_PRESS_MS * 100);
@@ -181,6 +219,16 @@ function handleKeyboard(event) {
     }
   }
 
+  if (state.screen === "practice") {
+    if (event.key === ".") addPracticeSymbol(".");
+    if (event.key === "-") addPracticeSymbol("-");
+    if (event.key === "Backspace") deletePractice();
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      confirmPractice();
+    }
+  }
+
   if (state.screen === "game" && state.game) {
     if (event.key === ".") addGameSymbol(".");
     if (event.key === "-") addGameSymbol("-");
@@ -192,6 +240,7 @@ function handleKeyboard(event) {
   }
 }
 
+/* Classic mode behavior: kept consistent with the accepted version. */
 function addClassicSymbol(symbol) {
   if (state.code.length >= 5) return;
   state.code += symbol;
@@ -223,18 +272,55 @@ function updateClassic() {
   renderClassicBoard();
 }
 
-function renderClassicBoard(finalCode = "") {
-  const svg = el.morseBoard;
+function renderClassicBoard() {
+  renderBoardTo(el.morseBoard, state.code);
+}
+
+/* Practice mode */
+function addPracticeSymbol(symbol) {
+  if (state.practice.code.length >= 5) return;
+  state.practice.code += symbol;
+  updatePractice();
+}
+
+function deletePractice() {
+  state.practice.code = state.practice.code.slice(0, -1);
+  updatePractice();
+}
+
+function resetPractice() {
+  state.practice.code = "";
+  state.practice.output = "";
+  updatePractice();
+}
+
+function confirmPractice() {
+  if (!state.practice.code) return;
+  state.practice.output += CODE_TO_CHAR[state.practice.code] || "?";
+  state.practice.code = "";
+  updatePractice();
+}
+
+function updatePractice() {
+  const code = state.practice.code;
+  el.practiceCurrentCode.textContent = code ? toDisplayCode(code) : "未入力";
+  el.practiceCurrentLetter.textContent = code ? (CODE_TO_CHAR[code] || "?") : "-";
+  el.practiceOutputText.textContent = state.practice.output || "-";
+  renderBoardTo(el.practiceBoard, code);
+}
+
+/* Shared board renderer. It uses the same accepted board coordinates. */
+function renderBoardTo(svg, activeCode = "") {
   svg.innerHTML = "";
 
   const defs = createSvg("defs");
-  const gradient = createSvg("linearGradient", { id: "boardGradient", x1: "0", y1: "0", x2: "0", y2: "1" });
+  const gradient = createSvg("linearGradient", { id: `boardGradient-${svg.id}`, x1: "0", y1: "0", x2: "0", y2: "1" });
   gradient.appendChild(createSvg("stop", { offset: "0%", "stop-color": "#173155" }));
   gradient.appendChild(createSvg("stop", { offset: "100%", "stop-color": "#07111f" }));
   defs.appendChild(gradient);
   svg.appendChild(defs);
 
-  svg.appendChild(createSvg("rect", { class: "board-bg", x: 12, y: 12, width: 936, height: 956, rx: 28 }));
+  svg.appendChild(createSvg("rect", { class: "board-bg", x: 12, y: 12, width: 936, height: 956, rx: 28, fill: `url(#boardGradient-${svg.id})` }));
   svg.appendChild(createSvg("rect", { class: "board-frame", x: 22, y: 22, width: 916, height: 936, rx: 22 }));
 
   svg.appendChild(text("MORSE", 98, 58, "board-title"));
@@ -246,7 +332,7 @@ function renderClassicBoard(finalCode = "") {
     const from = BOARD_NODES[edge.from];
     const to = BOARD_NODES[edge.to];
     if (!from || !to || from.x <= 0 || to.x <= 0) return;
-    const active = isPath(edge.to);
+    const active = activeCode && activeCode.startsWith(edge.to);
     svg.appendChild(createSvg("line", {
       class: `board-edge${active ? " path" : ""}`,
       x1: from.x, y1: from.y, x2: to.x, y2: to.y
@@ -255,10 +341,10 @@ function renderClassicBoard(finalCode = "") {
 
   Object.entries(BOARD_NODES).forEach(([code, node]) => {
     if (!code || node.x <= 0) return;
-    renderNode(svg, code, node);
+    renderNode(svg, code, node, activeCode);
   });
 
-  DIGIT_POSITIONS.forEach(item => renderDigit(svg, item));
+  DIGIT_POSITIONS.forEach(item => renderDigit(svg, item, activeCode));
 }
 
 function renderRoot(svg) {
@@ -268,8 +354,9 @@ function renderRoot(svg) {
   svg.appendChild(group);
 }
 
-function renderNode(svg, code, node) {
-  const group = createSvg("g", { class: `board-node ${node.kind}${isPath(code) ? " path" : ""}${state.code === code ? " active" : ""}` });
+function renderNode(svg, code, node, activeCode) {
+  const className = `board-node ${node.kind}${activeCode && activeCode.startsWith(code) ? " path" : ""}${activeCode === code ? " active" : ""}`;
+  const group = createSvg("g", { class: className });
 
   if (node.kind === "dot") {
     group.appendChild(createSvg("circle", { class: "node-shape", cx: node.x, cy: node.y, r: nodeRadius(code) }));
@@ -293,17 +380,13 @@ function renderNode(svg, code, node) {
   }
 }
 
-function renderDigit(svg, item) {
-  const className = `number-chip${isPath(item.code) ? " path" : ""}${state.code === item.code ? " current" : ""}`;
+function renderDigit(svg, item, activeCode) {
+  const className = `number-chip${activeCode && activeCode.startsWith(item.code) ? " path" : ""}${activeCode === item.code ? " current" : ""}`;
   const group = createSvg("g", { class: className });
   group.appendChild(createSvg("rect", { class: "number-chip-body", x: item.x - 42, y: item.y - 28, width: 84, height: 56, rx: 12 }));
   group.appendChild(text(item.char, item.x, item.y - 8, "number-chip-digit"));
   group.appendChild(text(toDisplayCode(item.code), item.x, item.y + 17, "number-chip-code"));
   svg.appendChild(group);
-}
-
-function isPath(code) {
-  return state.code && state.code.startsWith(code);
 }
 
 function nodeRadius(code) {
@@ -325,9 +408,9 @@ function dashHeight(code) {
 }
 
 function createSvg(name, attrs = {}) {
-  const el = document.createElementNS(NS, name);
-  Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
-  return el;
+  const element = document.createElementNS(NS, name);
+  Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+  return element;
 }
 
 function text(value, x, y, className) {
@@ -338,6 +421,15 @@ function text(value, x, y, className) {
 
 function toDisplayCode(code) {
   return code.replaceAll(".", "●").replaceAll("-", "■");
+}
+
+/* Game mode */
+function showGameIntro() {
+  stopGame();
+  el.gameIntroPanel.classList.remove("hidden");
+  el.gamePlayPanel.classList.add("hidden");
+  el.gameResultPanel.classList.add("hidden");
+  renderRanking();
 }
 
 function startGame() {
@@ -353,10 +445,16 @@ function startGame() {
     input: "",
     words: 0,
     chars: 0,
-    misses: 0
+    misses: {}
   };
+
+  el.gameIntroPanel.classList.add("hidden");
+  el.gameResultPanel.classList.add("hidden");
+  el.gamePlayPanel.classList.remove("hidden");
+
   nextWord();
   el.gameMessage.textContent = "入力してください。";
+  el.gameMessage.className = "";
   tickGame();
 }
 
@@ -370,13 +468,13 @@ function addGameSymbol(symbol) {
   if (!game) return;
 
   if (symbol === "space") {
-    checkGameInput();
+    checkGameInput(true);
     return;
   }
 
   if (game.input.length >= 5) return;
   game.input += symbol;
-  checkGameInput();
+  checkGameInput(false);
 }
 
 function deleteGameInput() {
@@ -385,33 +483,47 @@ function deleteGameInput() {
   updateGame();
 }
 
-function checkGameInput() {
+function checkGameInput(fromSpace) {
   const game = state.game;
   const target = game.word[game.index];
   const expected = MORSE[target];
 
   if (game.input === expected) {
-    game.score += 10 + game.combo * 2;
+    const gained = 10 + game.combo * 2;
+    game.score += gained;
     game.combo += 1;
     game.maxCombo = Math.max(game.maxCombo, game.combo);
     game.chars += 1;
     game.index += 1;
     game.input = "";
-    el.gameMessage.textContent = `正解：${target}`;
+    setGameMessage(`正解：${target} +${gained}`, "good");
 
     if (game.index >= game.word.length) {
+      const bonus = game.word.length * 20 + Math.max(0, game.combo - 1) * 5;
       game.words += 1;
-      game.score += game.word.length * 20;
-      nextWord();
+      game.score += bonus;
+      setGameMessage(`単語クリア +${bonus}`, "good");
+      setTimeout(() => {
+        if (state.game) nextWord();
+      }, 280);
     }
-  } else if (!expected.startsWith(game.input) || game.input.length >= expected.length) {
+  } else if (
+    fromSpace ||
+    !expected.startsWith(game.input) ||
+    game.input.length >= expected.length
+  ) {
     game.combo = 0;
-    game.misses += 1;
+    game.misses[target] = (game.misses[target] || 0) + 1;
     game.input = "";
-    el.gameMessage.textContent = `ミス：${target} は ${toDisplayCode(expected)}`;
+    setGameMessage(`ミス：${target} は ${toDisplayCode(expected)}`, "bad");
   }
 
   updateGame();
+}
+
+function setGameMessage(message, kind) {
+  el.gameMessage.textContent = message;
+  el.gameMessage.className = kind || "";
 }
 
 function nextWord() {
@@ -434,6 +546,7 @@ function tickGame() {
 
   const remain = Math.max(0, GAME_SECONDS - (performance.now() - game.startedAt) / 1000);
   el.gameTime.textContent = remain.toFixed(1);
+  el.gameTimerBar.style.transform = `scaleX(${remain / GAME_SECONDS})`;
 
   if (remain <= 0) {
     endGame();
@@ -452,6 +565,7 @@ function updateGame() {
   el.gameMaxCombo.textContent = game.maxCombo;
   el.gameWord.textContent = game.word;
   el.gameCurrentLetter.textContent = game.word[game.index] || "-";
+  el.gameCurrentCode.textContent = game.input ? toDisplayCode(game.input) : "未入力";
 
   el.gameWordProgress.innerHTML = "";
   [...game.word].forEach((char, index) => {
@@ -462,6 +576,8 @@ function updateGame() {
     token.textContent = char;
     el.gameWordProgress.appendChild(token);
   });
+
+  renderBoardTo(el.gameBoard, game.input);
 }
 
 function endGame() {
@@ -472,18 +588,41 @@ function endGame() {
   const record = {
     score: game.score,
     words: game.words,
+    chars: game.chars,
     maxCombo: game.maxCombo,
+    misses: { ...game.misses },
     date: new Date().toLocaleDateString("ja-JP")
   };
 
+  saveRanking(record);
+  renderResult(record);
+  state.game = null;
+
+  el.gamePlayPanel.classList.add("hidden");
+  el.gameIntroPanel.classList.add("hidden");
+  el.gameResultPanel.classList.remove("hidden");
+  renderRanking();
+}
+
+function renderResult(record) {
+  el.resultScore.textContent = record.score;
+  el.resultWords.textContent = record.words;
+  el.resultChars.textContent = record.chars;
+  el.resultMaxCombo.textContent = record.maxCombo;
+
+  const weak = Object.entries(record.misses)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([letter, count]) => `${letter}（${count}回）`);
+
+  el.resultWeakLetters.textContent = weak.length ? `苦手文字：${weak.join("、")}` : "苦手文字：なし";
+}
+
+function saveRanking(record) {
   const ranking = loadRanking();
   ranking.push(record);
   ranking.sort((a, b) => b.score - a.score);
   localStorage.setItem(RANKING_KEY, JSON.stringify(ranking.slice(0, 5)));
-
-  el.gameMessage.textContent = `終了：${record.score}点 / ${record.words}語 / 最大${record.maxCombo}コンボ`;
-  state.game = null;
-  renderRanking();
 }
 
 function loadRanking() {
