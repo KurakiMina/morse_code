@@ -157,14 +157,14 @@
         <button id="gameBackButton" class="back-button" type="button">← 戻る</button>
         <div>
           <h1>ゲームモード</h1>
-          <p>40秒以内に単語を1文字ずつ入力します。ミスしても減点なし、コンボのみリセットされます。</p>
+          <p>40秒以内に単語を1文字ずつ入力します。入力中は補正せず、正解一致時に自動判定します。ミスしても減点なし、コンボのみリセットされます。</p>
         </div>
         <button class="sound-toggle compact" data-sound-toggle type="button" aria-pressed="true">音声 ON</button>
       </header>
 
       <section id="gameIntroPanel" class="panel game-intro-panel">
         <h2>40秒チャレンジ</h2>
-        <p>表示された単語をモールス信号で入力してください。序盤は短い単語、正解が続くと長い単語や数字入り単語が出ます。</p>
+        <p>表示された単語をモールス信号で入力してください。入力中は経路補正しません。正解コードと一致すると自動正解します。確定ボタンは廃止し、入力クリアに変更しました。</p>
         <div class="rule-grid">
           <div><span class="label">文字正解</span><strong>+10点</strong></div>
           <div><span class="label">単語クリア</span><strong>難易度倍率</strong></div>
@@ -204,8 +204,23 @@
               <span class="label">現在の文字</span>
               <strong id="gameCurrentLetter">-</strong>
               <p id="gameMessage">入力してください。</p>
-              <span class="label">現在の入力</span>
-              <strong id="gameCurrentCode" class="code-display">未入力</strong>
+
+              <div class="game-input-monitor">
+                <div>
+                  <span class="label">現在の入力</span>
+                  <strong id="gameCurrentCode" class="code-display">未入力</strong>
+                </div>
+                <div>
+                  <span class="label">目標コード</span>
+                  <strong id="gameExpectedCode" class="code-display">-</strong>
+                </div>
+                <div>
+                  <span class="label">直前の入力</span>
+                  <strong id="gameLastInputCode" class="code-display">-</strong>
+                </div>
+              </div>
+
+              <div id="gameInputDots" class="game-input-dots" aria-label="入力済み記号"></div>
             </div>
 
             <button id="gameKeyButton" class="key-button hold-key-button" type="button">
@@ -213,8 +228,13 @@
               <span id="gameHoldBar" class="key-hold-bar" aria-hidden="true"></span>
             </button>
 
+            <div class="button-row game-symbol-row">
+              <button id="gameDotButton" class="secondary-button symbol-input-button" type="button">短押し ●</button>
+              <button id="gameDashButton" class="secondary-button symbol-input-button" type="button">長押し ■</button>
+            </div>
+
             <div class="button-row">
-              <button id="gameSpaceButton" class="secondary-button" type="button">スペース</button>
+              <button id="gameSpaceButton" class="secondary-button" type="button">入力クリア</button>
               <button id="gameDeleteButton" class="secondary-button" type="button">1つ戻る</button>
               <button id="gameQuitButton" class="secondary-button danger" type="button">終了</button>
             </div>

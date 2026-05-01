@@ -1,0 +1,62 @@
+[
+  [
+    "G after 1",
+    {
+      "current": "■",
+      "last": "-",
+      "expected": "■■●",
+      "letter": "G",
+      "index": 0,
+      "input": "-",
+      "lastInput": ""
+    }
+  ],
+  [
+    "G after 2",
+    {
+      "current": "■■",
+      "last": "-",
+      "expected": "■■●",
+      "letter": "G",
+      "index": 0,
+      "input": "--",
+      "lastInput": ""
+    }
+  ],
+  [
+    "G after 3",
+    {
+      "current": "■■●",
+      "last": "■■●",
+      "expected": "-",
+      "letter": "-",
+      "index": 1,
+      "input": "",
+      "lastInput": "--."
+    }
+  ],
+  [
+    "N after 1",
+    {
+      "current": "■",
+      "last": "-",
+      "expected": "■●",
+      "letter": "N",
+      "index": 0,
+      "input": "-",
+      "lastInput": ""
+    }
+  ],
+  [
+    "N after 2",
+    {
+      "current": "■●",
+      "last": "■●",
+      "expected": "-",
+      "letter": "-",
+      "index": 1,
+      "input": "",
+      "lastInput": "-."
+    }
+  ]
+]

@@ -126,10 +126,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     "gameIntroPanel", "gamePlayPanel", "gameResultPanel",
     "startGameButton", "playAgainButton", "backToGameIntroButton",
-    "gameKeyButton", "gameHoldBar", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
+    "gameKeyButton", "gameHoldBar", "gameDotButton", "gameDashButton", "gameSpaceButton", "gameDeleteButton", "gameQuitButton",
     "gameTime", "gameTimerBar", "gameScore", "gameCombo", "gameMaxCombo",
     "gameLevel", "gameTitle", "gameDifficultyBadge", "gameEffectLayer",
-    "gameWord", "gameWordProgress", "gameCurrentLetter", "gameCurrentCode", "gameMessage", "gameBoard",
+    "gameWord", "gameWordProgress", "gameCurrentLetter", "gameCurrentCode", "gameExpectedCode", "gameLastInputCode", "gameInputDots", "gameMessage", "gameBoard",
     "resultScore", "resultWords", "resultChars", "resultMaxCombo", "resultLevel", "resultTitle", "resultWeakLetters",
     "rankingList"
   ].forEach(id => el[id] = document.getElementById(id));
@@ -158,7 +158,15 @@ document.addEventListener("DOMContentLoaded", () => {
   el.practiceResetButton.addEventListener("click", resetPractice);
 
   setupPressButton(el.gameKeyButton, addGameSymbol, null, el.gameHoldBar, true);
-  el.gameSpaceButton.addEventListener("click", () => addGameSymbol("space"));
+  el.gameDotButton.addEventListener("click", () => {
+    playSe("dot");
+    addGameSymbol(".");
+  });
+  el.gameDashButton.addEventListener("click", () => {
+    playSe("dash");
+    addGameSymbol("-");
+  });
+  el.gameSpaceButton.addEventListener("click", clearGameInput);
   el.gameDeleteButton.addEventListener("click", deleteGameInput);
   el.gameQuitButton.addEventListener("click", endGame);
   el.startGameButton.addEventListener("click", startGame);
@@ -199,9 +207,11 @@ function setupPressButton(button, callback, meter, buttonBar = null, enableSe = 
   let startAt = 0;
   let active = false;
   let holdRaf = null;
+  let activePointerId = null;
 
   const resetButtonBar = () => {
     if (holdRaf) cancelAnimationFrame(holdRaf);
+    holdRaf = null;
     if (buttonBar) {
       buttonBar.style.height = "0%";
       button.classList.remove("short-ready", "long-ready");
@@ -221,8 +231,16 @@ function setupPressButton(button, callback, meter, buttonBar = null, enableSe = 
   const start = event => {
     event.preventDefault();
     active = true;
+    activePointerId = event.pointerId;
     startAt = performance.now();
     button.classList.add("pressing");
+
+    try {
+      if (button.setPointerCapture && event.pointerId != null) {
+        button.setPointerCapture(event.pointerId);
+      }
+    } catch {}
+
     if (meter) updateMeter(meter, startAt);
     updateButtonBar();
     if (enableSe) playSe("press");
@@ -230,23 +248,42 @@ function setupPressButton(button, callback, meter, buttonBar = null, enableSe = 
 
   const finish = event => {
     if (!active) return;
-    event.preventDefault();
+    if (event && activePointerId != null && event.pointerId != null && event.pointerId !== activePointerId) return;
+
+    event?.preventDefault?.();
     active = false;
+    activePointerId = null;
     button.classList.remove("pressing");
+
     if (state.meterRaf) cancelAnimationFrame(state.meterRaf);
     if (meter) meter.style.width = "0%";
 
     const elapsed = performance.now() - startAt;
     const symbol = elapsed >= LONG_PRESS_MS ? "-" : ".";
     resetButtonBar();
+
     if (enableSe) playSe(symbol === "." ? "dot" : "dash");
     callback(symbol);
   };
 
+  const cancel = event => {
+    if (!active) return;
+    event?.preventDefault?.();
+    active = false;
+    activePointerId = null;
+    button.classList.remove("pressing");
+    if (state.meterRaf) cancelAnimationFrame(state.meterRaf);
+    if (meter) meter.style.width = "0%";
+    resetButtonBar();
+  };
+
   button.addEventListener("pointerdown", start);
   button.addEventListener("pointerup", finish);
-  button.addEventListener("pointerleave", finish);
-  button.addEventListener("pointercancel", finish);
+  button.addEventListener("pointercancel", cancel);
+
+  // Pointer captureが効かない環境向けの保険。
+  document.addEventListener("pointerup", finish);
+  document.addEventListener("pointercancel", cancel);
 }
 
 function updateMeter(meter, startAt) {
@@ -663,6 +700,8 @@ function startGame() {
     word: "",
     index: 0,
     input: "",
+    lastInput: "",
+    lastInputTimer: null,
     words: 0,
     chars: 0,
     misses: {},
@@ -685,6 +724,7 @@ function startGame() {
 
 function stopGame() {
   if (state.game?.raf) cancelAnimationFrame(state.game.raf);
+  if (state.game?.lastInputTimer) clearTimeout(state.game.lastInputTimer);
   state.game = null;
 }
 
@@ -693,84 +733,134 @@ function addGameSymbol(symbol) {
   const game = state.game;
   if (!game) return;
 
-  if (symbol === "space") {
-    checkGameInput(true);
-    return;
-  }
+  if (symbol !== "." && symbol !== "-") return;
 
-  if (game.input.length >= 5) return;
   game.input += symbol;
   checkGameInput(false);
+}
+
+function clearGameInput() {
+  if (!state.game) return;
+  state.game.input = "";
+  state.game.lastInput = "";
+  playSe("reset");
+  setGameMessage("入力をクリアしました。", "");
+  updateGame();
 }
 
 function deleteGameInput() {
   if (!state.game) return;
   state.game.input = state.game.input.slice(0, -1);
   playSe("delete");
+  setGameMessage(state.game.input ? "1つ戻しました。" : "入力を消しました。", "");
   updateGame();
 }
 
 function checkGameInput(fromSpace) {
   const game = state.game;
+  if (!game) return;
+
   const target = game.word[game.index];
   const expected = MORSE[target];
 
   if (game.input === expected) {
-    const gained = 10 + game.combo * 2;
-    game.score += gained;
-    game.combo += 1;
-    game.maxCombo = Math.max(game.maxCombo, game.combo);
-    game.chars += 1;
-    game.index += 1;
-    game.input = "";
-    game.level = calculateLevel(game.combo, game.words);
-    game.highestLevel = Math.max(game.highestLevel, game.level);
-    game.title = calculateTitle(game.score, game.maxCombo);
-
-    playSe("correct");
-    setGameMessage(`正解：${target} +${gained}`, "good");
-    showEffect(`+${gained} / ${game.combo} COMBO`, "good");
-    pulseGameUi();
-
-    if (game.index >= game.word.length) {
-      const difficulty = game.difficulty;
-      const meta = DIFFICULTY_META[difficulty];
-      const baseBonus = game.word.length * 20;
-      const difficultyBonus = Math.round(baseBonus * meta.multiplier);
-      const comboBonus = Math.max(0, game.combo - 1) * 5;
-      const bonus = difficultyBonus + comboBonus;
-
-      game.words += 1;
-      game.score += bonus;
-      game.level = calculateLevel(game.combo, game.words);
-      game.highestLevel = Math.max(game.highestLevel, game.level);
-      game.title = calculateTitle(game.score, game.maxCombo);
-
-      playSe("word");
-      setGameMessage(`単語クリア +${bonus}`, "good");
-      showEffect(`${meta.label} CLEAR +${bonus}`, "level");
-
-      setTimeout(() => {
-        if (state.game) nextWord();
-      }, 360);
-    }
-  } else if (
-    fromSpace ||
-    !expected.startsWith(game.input) ||
-    game.input.length >= expected.length
-  ) {
-    game.combo = 0;
-    game.misses[target] = (game.misses[target] || 0) + 1;
-    game.input = "";
-    game.level = calculateLevel(game.combo, game.words);
-    game.title = calculateTitle(game.score, game.maxCombo);
-
-    playSe("miss");
-    setGameMessage(`ミス：${target} は ${toDisplayCode(expected)}`, "bad");
-    showEffect("COMBO RESET", "bad");
+    acceptGameCharacter(target);
+    updateGame();
+    return;
   }
 
+  if (game.input.length > INPUT_MAX_LENGTH) {
+    rejectGameCharacter(target, expected);
+    updateGame();
+    return;
+  }
+
+  setGameMessage("入力中。正解コードと一致すると自動で次へ進みます。", "");
   updateGame();
+}
+
+function rememberGameInput(code) {
+  const game = state.game;
+  if (!game) return;
+
+  game.lastInput = code || "";
+  if (game.lastInputTimer) clearTimeout(game.lastInputTimer);
+
+  game.lastInputTimer = setTimeout(() => {
+    if (!state.game) return;
+    state.game.lastInput = "";
+    updateGame();
+  }, 700);
+}
+
+function acceptGameCharacter(target) {
+  const game = state.game;
+  const acceptedCode = game.input;
+  rememberGameInput(acceptedCode);
+  const gained = 10 + game.combo * 2;
+
+  game.score += gained;
+  game.combo += 1;
+  game.maxCombo = Math.max(game.maxCombo, game.combo);
+  game.chars += 1;
+  game.index += 1;
+  game.input = "";
+  game.level = calculateLevel(game.combo, game.words);
+  game.highestLevel = Math.max(game.highestLevel, game.level);
+  game.title = calculateTitle(game.score, game.maxCombo);
+
+  playSe("correct");
+  setGameMessage(`正解：${target} +${gained}`, "good");
+  showEffect(`+${gained} / ${game.combo} COMBO`, "good");
+  pulseGameUi();
+
+  if (game.index >= game.word.length) {
+    clearGameWord();
+  }
+}
+
+function clearGameWord() {
+  const game = state.game;
+  const difficulty = game.difficulty;
+  const meta = DIFFICULTY_META[difficulty];
+  const baseBonus = game.word.length * 20;
+  const difficultyBonus = Math.round(baseBonus * meta.multiplier);
+  const comboBonus = Math.max(0, game.combo - 1) * 5;
+  const bonus = difficultyBonus + comboBonus;
+
+  game.words += 1;
+  game.score += bonus;
+  game.level = calculateLevel(game.combo, game.words);
+  game.highestLevel = Math.max(game.highestLevel, game.level);
+  game.title = calculateTitle(game.score, game.maxCombo);
+
+  playSe("word");
+  setGameMessage(`単語クリア +${bonus}`, "good");
+  showEffect(`${meta.label} CLEAR +${bonus}`, "level");
+
+  setTimeout(() => {
+    if (state.game) nextWord();
+  }, 360);
+}
+
+function rejectGameCharacter(target, expected) {
+  const game = state.game;
+  rememberGameInput(game.input);
+  game.combo = 0;
+  game.misses[target] = (game.misses[target] || 0) + 1;
+  game.input = "";
+  game.level = calculateLevel(game.combo, game.words);
+  game.title = calculateTitle(game.score, game.maxCombo);
+
+  playSe("miss");
+  setGameMessage(`ミス：${target} は ${toDisplayCode(expected)}`, "bad");
+  showEffect("COMBO RESET", "bad");
+}
+
+function setGameMessage(message, kind = "") {
+  if (!el.gameMessage) return;
+  el.gameMessage.textContent = message;
+  el.gameMessage.className = kind || "";
 }
 
 function nextWord() {
@@ -837,6 +927,10 @@ function updateGame() {
   const game = state.game;
   if (!game) return;
 
+  const target = game.word[game.index] || "";
+  const expected = target ? MORSE[target] : "";
+  const displayInput = game.input || game.lastInput || "";
+
   el.gameScore.textContent = game.score;
   el.gameCombo.textContent = game.combo;
   el.gameMaxCombo.textContent = game.maxCombo;
@@ -844,8 +938,14 @@ function updateGame() {
   el.gameTitle.textContent = game.title;
   el.gameDifficultyBadge.textContent = DIFFICULTY_META[game.difficulty].label;
   el.gameWord.textContent = game.word;
-  el.gameCurrentLetter.textContent = game.word[game.index] || "-";
-  el.gameCurrentCode.textContent = game.input ? toDisplayCode(game.input) : "未入力";
+  el.gameCurrentLetter.textContent = target || "-";
+  el.gameCurrentCode.textContent = displayInput ? toDisplayCode(displayInput) : "未入力";
+  el.gameCurrentCode.classList.toggle("accepted-code", !game.input && !!game.lastInput);
+  el.gameExpectedCode.textContent = expected ? toDisplayCode(expected) : "-";
+  el.gameLastInputCode.textContent = game.lastInput ? toDisplayCode(game.lastInput) : "-";
+
+  renderInputSymbols(displayInput, !game.input && !!game.lastInput);
+  updateInputStatus(game.input, expected, game.lastInput);
 
   el.gameWordProgress.innerHTML = "";
   [...game.word].forEach((char, index) => {
@@ -858,6 +958,51 @@ function updateGame() {
   });
 
   renderBoardTo(el.gameBoard, game.input);
+}
+
+function renderInputSymbols(code, accepted = false) {
+  if (!el.gameInputDots) return;
+  el.gameInputDots.innerHTML = "";
+
+  if (!code) {
+    const empty = document.createElement("span");
+    empty.className = "label";
+    empty.textContent = "まだ入力されていません";
+    el.gameInputDots.appendChild(empty);
+    return;
+  }
+
+  [...code].forEach(symbol => {
+    const item = document.createElement("span");
+    item.className = `input-symbol ${symbol === "." ? "dot" : "dash"}${accepted ? " accepted" : ""}`;
+    item.textContent = symbol === "." ? "●" : "■";
+    el.gameInputDots.appendChild(item);
+  });
+}
+
+function updateInputStatus(input, expected, lastInput = "") {
+  const panel = document.querySelector(".game-current");
+  if (!panel) return;
+
+  panel.classList.remove("input-active", "input-wrong", "ready-match");
+
+  if (!input && lastInput) {
+    panel.classList.add("ready-match");
+    return;
+  }
+
+  if (!input) return;
+
+  if (input === expected) {
+    panel.classList.add("ready-match");
+    return;
+  }
+
+  panel.classList.add("input-active");
+
+  if (input.length >= expected.length && input !== expected) {
+    panel.classList.add("input-wrong");
+  }
 }
 
 function endGame() {
