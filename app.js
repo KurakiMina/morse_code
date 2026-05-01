@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
     showScreen("mode");
   });
 
-  setupPressButton(el.keyButton, addClassicSymbol, el.timeBar);
+  setupPressButton(el.keyButton, addClassicSymbol, el.timeBar, null, true);
   el.spaceButton.addEventListener("click", confirmClassic);
   el.deleteButton.addEventListener("click", deleteClassic);
   el.resetButton.addEventListener("click", resetClassic);
@@ -294,32 +294,40 @@ function playSe(type) {
   }
 
   const now = ctx.currentTime;
-  const gain = ctx.createGain();
-  const osc = ctx.createOscillator();
 
+  // モールス信号で一般的なトーンに寄せる。
+  // 短点と長点は同じピッチ。長点は短点の約3倍。
   const preset = {
-    press: { freq: 220, duration: 0.035, gain: 0.025, type: "sine" },
-    dot: { freq: 760, duration: 0.07, gain: 0.055, type: "sine" },
-    dash: { freq: 520, duration: 0.13, gain: 0.058, type: "sine" },
-    confirm: { freq: 900, duration: 0.08, gain: 0.06, type: "triangle" },
-    correct: { freq: 1040, duration: 0.09, gain: 0.065, type: "triangle" },
-    word: { freq: 1240, duration: 0.11, gain: 0.065, type: "triangle" },
-    miss: { freq: 180, duration: 0.17, gain: 0.065, type: "sawtooth" },
-    delete: { freq: 340, duration: 0.06, gain: 0.045, type: "sine" },
-    reset: { freq: 260, duration: 0.09, gain: 0.05, type: "sine" },
-    toggle: { freq: 680, duration: 0.08, gain: 0.045, type: "sine" }
-  }[type] || { freq: 500, duration: 0.08, gain: 0.04, type: "sine" };
+    press: { freq: 650, duration: 0.018, gain: 0.018, type: "sine" },
+    dot: { freq: 650, duration: 0.075, gain: 0.07, type: "sine" },
+    dash: { freq: 650, duration: 0.225, gain: 0.07, type: "sine" },
+    confirm: { freq: 780, duration: 0.08, gain: 0.052, type: "sine" },
+    correct: { freq: 780, duration: 0.08, gain: 0.055, type: "sine" },
+    word: { freq: 900, duration: 0.11, gain: 0.055, type: "sine" },
+    miss: { freq: 180, duration: 0.16, gain: 0.055, type: "sine" },
+    delete: { freq: 420, duration: 0.055, gain: 0.038, type: "sine" },
+    reset: { freq: 260, duration: 0.09, gain: 0.045, type: "sine" },
+    toggle: { freq: 650, duration: 0.08, gain: 0.045, type: "sine" }
+  }[type] || { freq: 650, duration: 0.08, gain: 0.045, type: "sine" };
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
 
   osc.type = preset.type;
   osc.frequency.setValueAtTime(preset.freq, now);
+
+  // クリックノイズを避けるため、短いアタック/リリースを付ける。
+  const attack = 0.006;
+  const release = 0.018;
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.linearRampToValueAtTime(preset.gain, now + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration);
+  gain.gain.linearRampToValueAtTime(preset.gain, now + attack);
+  gain.gain.setValueAtTime(preset.gain, now + preset.duration);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration + release);
 
   osc.connect(gain);
   gain.connect(ctx.destination);
   osc.start(now);
-  osc.stop(now + preset.duration + 0.02);
+  osc.stop(now + preset.duration + release + 0.01);
 }
 
 function handleKeyboard(event) {
@@ -356,25 +364,32 @@ function handleKeyboard(event) {
 
 /* Classic mode behavior: kept consistent with the accepted version. */
 function addClassicSymbol(symbol) {
-  if (state.code.length >= 5) return;
+  ensureAudioContext();
+  if (state.code.length >= 5) {
+    playSe("miss");
+    return;
+  }
   state.code += symbol;
   updateClassic();
 }
 
 function deleteClassic() {
   state.code = state.code.slice(0, -1);
+  playSe("delete");
   updateClassic();
 }
 
 function resetClassic() {
   state.code = "";
   state.output = "";
+  playSe("reset");
   updateClassic();
 }
 
 function confirmClassic() {
   if (!state.code) return;
   state.output += CODE_TO_CHAR[state.code] || "?";
+  playSe(CODE_TO_CHAR[state.code] ? "confirm" : "miss");
   state.code = "";
   updateClassic();
 }
